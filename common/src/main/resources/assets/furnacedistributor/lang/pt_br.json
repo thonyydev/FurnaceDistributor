@@ -1,0 +1,29 @@
+{
+  "key.categories.furnacedistributor": "Furnace Distributor",
+
+  "key.furnacedistributor.distribute": "Distribuir itens",
+  "key.furnacedistributor.collect": "Coletar itens",
+
+  "message.furnacedistributor.look_at_furnace": "Você precisa olhar para uma fornalha!",
+  "message.furnacedistributor.invalid_block": "Você precisa selecionar uma fornalha, alto-forno ou defumador!",
+  "message.furnacedistributor.first_selected": "Primeira fornalha selecionada! Agora selecione a segunda.",
+  "message.furnacedistributor.area_selected": "Área selecionada com %s fornalha(s).",
+  "message.furnacedistributor.too_many_furnaces": "Muitas fornalhas selecionadas! O limite é %s.",
+
+  "message.furnacedistributor.no_item": "Você precisa segurar um item na mão!",
+  "message.furnacedistributor.no_furnaces": "Nenhuma fornalha foi encontrada na área selecionada.",
+  "message.furnacedistributor.invalid_item": "Esse item não pode ser usado como combustível nem fundido.",
+  "message.furnacedistributor.not_enough_items": "Você não possui itens suficientes para todas as fornalhas.",
+  "message.furnacedistributor.distributed_items": "%s itens distribuídos entre %s fornalha(s).",
+
+  "message.furnacedistributor.no_valid_furnaces": "Nenhuma fornalha válida encontrada!",
+  "message.furnacedistributor.no_smelted_items": "Nenhum item fundido encontrado nas fornalhas!",
+  "message.furnacedistributor.collected_items": "✓ %s itens coletados de %s fornalha(s)!",
+
+  "message.furnacedistributor.collect_look_at_furnace": "Você precisa olhar para uma fornalha!",
+  "message.furnacedistributor.collect_invalid_block": "Isto não é uma fornalha, alto-forno ou defumador!",
+  "message.furnacedistributor.collect_first_selected": "✓ Primeira fornalha selecionada! Selecione a segunda para coletar.",
+  "message.furnacedistributor.collect_no_furnaces": "Nenhuma fornalha encontrada na área!",
+  "message.furnacedistributor.collect_too_many_furnaces": "Muitas fornalhas! Limite: %s",
+  "message.furnacedistributor.collecting": "✓ Coletando de %s fornalha(s)..."
+}

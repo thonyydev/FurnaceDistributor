@@ -1,0 +1,33 @@
+modLoader = "javafml"
+loaderVersion = "[48,)"
+#issueTrackerURL = ""
+license="${mod_license}"
+
+[[mods]]
+modId="furnacedistributor"
+version="${version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''${mod_description}'''
+#logoFile = ""
+
+[[dependencies.furnacedistributor]]
+modId = "forge"
+mandatory = true
+versionRange = "[48,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.furnacedistributor]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.2,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.furnacedistributor]]
+modId = "architectury"
+mandatory = true
+versionRange = "[10.1.20,)"
+ordering = "AFTER"
+side = "BOTH"

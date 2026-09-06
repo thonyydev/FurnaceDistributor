@@ -1,0 +1,36 @@
+.gradle/
+build/
+**/build/
+
+run/
+**/run/
+
+.idea/
+*.iml
+
+out/
+
+.gradle-cache/
+
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IntelliJ
+.idea/
+*.ipr
+*.iws
+*.iml
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# VS Code
+.vscode/
+
+# Gradle local
+gradle.properties.local
