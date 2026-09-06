@@ -26,9 +26,18 @@ public final class KeyBindings {
                     CATEGORY
             );
 
+    public static final KeyMapping CANCEL_KEY =
+            new KeyMapping(
+                    "key.furnacedistributor.cancel",
+                    InputConstants.Type.KEYSYM,
+                    GLFW.GLFW_KEY_X,
+                    CATEGORY
+            );
+
     public static void register() {
         KeyMappingRegistry.register(DISTRIBUTE_KEY);
         KeyMappingRegistry.register(COLLECT_KEY);
+        KeyMappingRegistry.register(CANCEL_KEY);
     }
 
     private KeyBindings() {

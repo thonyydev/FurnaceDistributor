@@ -25,5 +25,8 @@
   "message.furnacedistributor.collect_first_selected": "✓ First furnace selected! Select the second one to collect.",
   "message.furnacedistributor.collect_no_furnaces": "No furnaces were found in the area!",
   "message.furnacedistributor.collect_too_many_furnaces": "Too many furnaces! Limit: %s",
-  "message.furnacedistributor.collecting": "✓ Collecting from %s furnace(s)..."
+  "message.furnacedistributor.collecting": "✓ Collecting from %s furnace(s)...",
+
+  "key.furnacedistributor.cancel": "Cancel selection",
+  "message.furnacedistributor.selection_cancelled": "Selection cancelled."
 }

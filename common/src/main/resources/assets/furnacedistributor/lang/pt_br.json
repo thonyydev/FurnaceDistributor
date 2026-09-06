@@ -25,5 +25,8 @@
   "message.furnacedistributor.collect_first_selected": "✓ Primeira fornalha selecionada! Selecione a segunda para coletar.",
   "message.furnacedistributor.collect_no_furnaces": "Nenhuma fornalha encontrada na área!",
   "message.furnacedistributor.collect_too_many_furnaces": "Muitas fornalhas! Limite: %s",
-  "message.furnacedistributor.collecting": "✓ Coletando de %s fornalha(s)..."
+  "message.furnacedistributor.collecting": "✓ Coletando de %s fornalha(s)...",
+
+  "key.furnacedistributor.cancel": "Cancelar seleção",
+  "message.furnacedistributor.selection_cancelled": "Seleção cancelada."
 }
