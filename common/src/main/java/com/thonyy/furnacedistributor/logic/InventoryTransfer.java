@@ -50,7 +50,7 @@ final class InventoryTransfer {
 
     private static void merge(Inventory inventory, ItemStack target, ItemStack remaining) {
         if (remaining.isEmpty() || target.isEmpty() || !target.isStackable()
-                || !ItemStack.isSameItemSameTags(target, remaining)) {
+                || !ItemStack.isSameItemSameComponents(target, remaining)) {
             return;
         }
 

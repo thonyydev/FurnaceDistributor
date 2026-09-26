@@ -1,18 +1,17 @@
-package com.thonyy.furnacedistributor.forge.client;
+package com.thonyy.furnacedistributor.neoforge.client;
 
 import com.thonyy.furnacedistributor.FurnaceDistributor;
 import com.thonyy.furnacedistributor.client.RenderHandler;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
-@Mod.EventBusSubscriber(
+@EventBusSubscriber(
         modid = FurnaceDistributor.MOD_ID,
-        value = Dist.CLIENT,
-        bus = Mod.EventBusSubscriber.Bus.FORGE
+        value = Dist.CLIENT
 )
-public final class ForgeRenderEvents {
+public final class NeoForgeRenderEvents {
 
     @SubscribeEvent
     public static void onRenderLevel(
@@ -31,6 +30,6 @@ public final class ForgeRenderEvents {
         );
     }
 
-    private ForgeRenderEvents() {
+    private NeoForgeRenderEvents() {
     }
 }

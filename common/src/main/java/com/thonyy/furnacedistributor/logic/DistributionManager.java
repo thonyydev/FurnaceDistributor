@@ -4,9 +4,9 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
@@ -50,23 +50,19 @@ public final class DistributionManager {
         }
 
         /*
-         * Vanilla, portanto funciona em Forge e Fabric.
-         *
-         * Evitamos ForgeHooks.getBurnTime(), que prenderia
-         * o módulo common ao Forge.
+         * API vanilla compartilhada por Fabric e NeoForge.
          */
         boolean isFuel =
                 AbstractFurnaceBlockEntity.isFuel(heldItem);
 
-        SimpleContainer testContainer = new SimpleContainer(1);
-        testContainer.setItem(0, heldItem.copy());
+        SingleRecipeInput recipeInput = new SingleRecipeInput(heldItem.copy());
 
         boolean isSmeltable =
                 player.level()
                         .getRecipeManager()
                         .getRecipeFor(
                                 RecipeType.SMELTING,
-                                testContainer,
+                                recipeInput,
                                 player.level()
                         )
                         .isPresent();
@@ -206,7 +202,7 @@ public final class DistributionManager {
     ) {
         return furnaceStack.isEmpty()
                 || (
-                ItemStack.isSameItemSameTags(
+                ItemStack.isSameItemSameComponents(
                         furnaceStack,
                         heldItem
                 )
