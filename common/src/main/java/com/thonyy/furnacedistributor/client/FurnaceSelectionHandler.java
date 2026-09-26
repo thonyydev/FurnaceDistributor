@@ -19,6 +19,10 @@ public final class FurnaceSelectionHandler {
     private static BlockPos firstPos;
     private static BlockPos secondPos;
 
+    // A área confirmada continua disponível após o contorno desaparecer.
+    private static BlockPos lastConfirmedFirstPos;
+    private static BlockPos lastConfirmedSecondPos;
+
     private static boolean selectionMode = false;
 
     private static int remainingDisplayTicks = 0;
@@ -126,7 +130,8 @@ public final class FurnaceSelectionHandler {
         mc.player.displayClientMessage(
                 Component.translatable(
                                 "message.furnacedistributor.area_selected",
-                                furnaceCount
+                                furnaceCount,
+                                KeyBindings.COLLECT_KEY.getTranslatedKeyMessage()
                         )
                         .withStyle(ChatFormatting.GREEN),
                 false
@@ -137,6 +142,10 @@ public final class FurnaceSelectionHandler {
          * 3 segundos após confirmar a segunda posição.
          */
         remainingDisplayTicks = DISPLAY_TICKS;
+
+        lastConfirmedFirstPos = firstPos.immutable();
+        lastConfirmedSecondPos = secondPos.immutable();
+        Collector.resetCollection();
 
         Distributor.distributeItems(
                 firstPos,
@@ -239,6 +248,24 @@ public final class FurnaceSelectionHandler {
 
         selectionMode = false;
         remainingDisplayTicks = 0;
+    }
+
+    public static boolean hasConfirmedArea() {
+        return lastConfirmedFirstPos != null
+                && lastConfirmedSecondPos != null;
+    }
+
+    public static BlockPos getLastConfirmedFirstPos() {
+        return lastConfirmedFirstPos;
+    }
+
+    public static BlockPos getLastConfirmedSecondPos() {
+        return lastConfirmedSecondPos;
+    }
+
+    public static void clearConfirmedArea() {
+        lastConfirmedFirstPos = null;
+        lastConfirmedSecondPos = null;
     }
 
     public static boolean isInSelectionMode() {

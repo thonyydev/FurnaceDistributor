@@ -35,6 +35,7 @@ public final class CollectionManager {
 
         int totalCollected = 0;
         int furnacesWithItems = 0;
+        boolean hasRemainingItems = false;
 
         for (AbstractFurnaceBlockEntity furnace : furnaces) {
 
@@ -48,7 +49,11 @@ public final class CollectionManager {
 
             ItemStack remaining = output.copy();
 
-            player.getInventory().add(remaining);
+            InventoryTransfer.insert(player.getInventory(), remaining);
+
+            if (!remaining.isEmpty()) {
+                hasRemainingItems = true;
+            }
 
             int collected =
                     originalCount - remaining.getCount();
@@ -79,7 +84,9 @@ public final class CollectionManager {
 
             player.displayClientMessage(
                     Component.translatable(
-                                    "message.furnacedistributor.no_smelted_items"
+                                    hasRemainingItems
+                                            ? "message.furnacedistributor.inventory_full"
+                                            : "message.furnacedistributor.no_smelted_items"
                             )
                             .withStyle(ChatFormatting.YELLOW),
                     false
@@ -94,6 +101,16 @@ public final class CollectionManager {
                                     furnacesWithItems
                             )
                             .withStyle(ChatFormatting.GREEN),
+                    false
+            );
+        }
+
+        if (totalCollected > 0 && hasRemainingItems) {
+            player.displayClientMessage(
+                    Component.translatable(
+                                    "message.furnacedistributor.collection_partial"
+                            )
+                            .withStyle(ChatFormatting.YELLOW),
                     false
             );
         }

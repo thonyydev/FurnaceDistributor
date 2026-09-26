@@ -3,15 +3,27 @@ package com.thonyy.furnacedistributor.client;
 import dev.architectury.event.events.client.ClientTickEvent;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
 
 public final class ClientEvents {
+
+    private static ClientLevel previousLevel;
 
     public static void register() {
         ClientTickEvent.CLIENT_POST.register(ClientEvents::onClientTick);
     }
 
     private static void onClientTick(Minecraft minecraft) {
+        // Verifica antes do retorno: o tick sem mundo também limpa a sessão.
+        // Uma nova instância inclui troca de dimensão e reconexão ao mesmo mundo.
+        if (minecraft.level != previousLevel) {
+            FurnaceSelectionHandler.resetSelection();
+            FurnaceSelectionHandler.clearConfirmedArea();
+            Collector.resetCollection();
+            previousLevel = minecraft.level;
+        }
+
         if (minecraft.player == null || minecraft.level == null) {
             return;
         }
@@ -35,6 +47,7 @@ public final class ClientEvents {
     private static void handleCancel(Minecraft minecraft) {
         boolean hasSelection =
                 FurnaceSelectionHandler.isInSelectionMode()
+                        || FurnaceSelectionHandler.hasConfirmedArea()
                         || Collector.isInCollectionMode();
 
         if (!hasSelection) {
@@ -42,6 +55,7 @@ public final class ClientEvents {
         }
 
         FurnaceSelectionHandler.resetSelection();
+        FurnaceSelectionHandler.clearConfirmedArea();
         Collector.resetCollection();
 
         minecraft.player.displayClientMessage(

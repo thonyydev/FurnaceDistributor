@@ -29,6 +29,18 @@ public final class Collector {
             return;
         }
 
+        // A coleta da área salva não depende do bloco sob a mira.
+        if (FurnaceSelectionHandler.hasConfirmedArea()) {
+            ModNetworking.sendCollect(
+                    new CollectPacket(
+                            FurnaceSelectionHandler.getLastConfirmedFirstPos(),
+                            FurnaceSelectionHandler.getLastConfirmedSecondPos()
+                    )
+            );
+
+            return;
+        }
+
         HitResult hitResult = mc.hitResult;
 
         if (
