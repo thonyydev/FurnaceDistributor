@@ -1,12 +1,13 @@
 package com.thonyy.furnacedistributor.client;
 
+import com.thonyy.furnacedistributor.feedback.PlayerFeedback;
+
 import com.thonyy.furnacedistributor.network.CollectPacket;
 import com.thonyy.furnacedistributor.network.ModNetworking;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
@@ -15,22 +16,25 @@ public final class Collector {
     private static BlockPos firstPos = null;
     private static BlockPos secondPos = null;
 
-    private static final int DISPLAY_TICKS = 60;
     private static int remainingDisplayTicks = 0;
 
     private static boolean collectionMode = false;
 
-    private static final int MAX_FURNACES = 64;
-
     public static void handleCollection() {
         Minecraft mc = Minecraft.getInstance();
 
-        if (mc.level == null || mc.player == null) {
+        if (mc.level == null || mc.player == null || mc.screen != null || !mc.isWindowActive()
+                || !mc.player.isAlive() || mc.player.isSpectator()) {
             return;
         }
 
-        // A coleta da área salva não depende do bloco sob a mira.
-        if (FurnaceSelectionHandler.hasConfirmedArea()) {
+        BlockPos target = FurnaceSelectionHandler.getLookingAtPos(mc);
+        boolean furnaceTarget = SelectionPreview.isSupportedFurnace(mc, target);
+        CollectionShortcut.Action action = CollectionShortcut.resolve(collectionMode,
+                FurnaceSelectionHandler.hasConfirmedArea(), mc.player.isShiftKeyDown(), furnaceTarget);
+
+        // A seleção pendente e o atalho contextual têm prioridade, sem substituir a área salva.
+        if (action == CollectionShortcut.Action.COLLECT_SAVED) {
             ModNetworking.sendCollect(
                     new CollectPacket(
                             FurnaceSelectionHandler.getLastConfirmedFirstPos(),
@@ -47,13 +51,10 @@ public final class Collector {
                 hitResult == null
                         || hitResult.getType() != HitResult.Type.BLOCK
         ) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
+            PlayerFeedback.actionBar(mc.player, Component.translatable(
                                     "message.furnacedistributor.collect_look_at_furnace"
                             )
-                            .withStyle(ChatFormatting.RED),
-                    true
-            );
+                            .withStyle(ChatFormatting.RED));
 
             return;
         }
@@ -61,19 +62,11 @@ public final class Collector {
         BlockPos pos =
                 ((BlockHitResult) hitResult).getBlockPos();
 
-        if (
-                !(mc.level
-                        .getBlockState(pos)
-                        .getBlock()
-                        instanceof AbstractFurnaceBlock)
-        ) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
+        if (!furnaceTarget) {
+            PlayerFeedback.actionBar(mc.player, Component.translatable(
                                     "message.furnacedistributor.collect_invalid_block"
                             )
-                            .withStyle(ChatFormatting.RED),
-                    true
-            );
+                            .withStyle(ChatFormatting.RED));
 
             return;
         }
@@ -81,20 +74,21 @@ public final class Collector {
         /*
          * Primeira seleção.
          */
-        if (!collectionMode) {
-            firstPos = pos;
+        if (action == CollectionShortcut.Action.SELECT_FIRST) {
+            FurnaceSelectionHandler.resetSelection();
+            SelectionPreview.clear();
+            firstPos = pos.immutable();
             secondPos = null;
 
             collectionMode = true;
             remainingDisplayTicks = 0;
 
-            mc.player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.collect_first_selected"
-                            )
-                            .withStyle(ChatFormatting.AQUA),
-                    false
-            );
+            SelectionFeedback.clear();
+            PlayerFeedback.actionBar(mc.player, Component.translatable(
+                            "message.furnacedistributor.collect_selection_started",
+                            KeyBindings.COLLECT_KEY.getTranslatedKeyMessage(),
+                            KeyBindings.CANCEL_KEY.getTranslatedKeyMessage())
+                    .withStyle(ChatFormatting.LIGHT_PURPLE));
 
             return;
         }
@@ -102,48 +96,33 @@ public final class Collector {
         /*
          * Segunda seleção.
          */
-        secondPos = pos;
+        secondPos = pos.immutable();
         collectionMode = false;
 
-        remainingDisplayTicks = DISPLAY_TICKS;
+        remainingDisplayTicks = ClientConfig.get().selectionDisplayTicks;
 
-        int furnaceCount = countFurnaces(mc);
+        int furnaceCount = SelectionPreview.validate(mc, firstPos, secondPos);
+        if (furnaceCount < 0) {
+            resetCollection();
+            return;
+        }
 
         if (furnaceCount == 0) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
+            PlayerFeedback.actionBar(mc.player, Component.translatable(
                                     "message.furnacedistributor.collect_no_furnaces"
                             )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
+                            .withStyle(ChatFormatting.RED));
 
             resetCollection();
             return;
         }
 
-        if (furnaceCount > MAX_FURNACES) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.collect_too_many_furnaces",
-                                    MAX_FURNACES
-                            )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
-
-            resetCollection();
-            return;
-        }
-
-        mc.player.displayClientMessage(
-                Component.translatable(
+        SelectionFeedback.show(Component.translatable(
                                 "message.furnacedistributor.collecting",
                                 furnaceCount
                         )
-                        .withStyle(ChatFormatting.AQUA),
-                false
-        );
+                        .withStyle(ChatFormatting.AQUA));
+        SelectionFeedback.confirmed(true, furnaceCount);
 
         ModNetworking.sendCollect(
                 new CollectPacket(
@@ -153,75 +132,18 @@ public final class Collector {
         );
     }
 
-    private static int countFurnaces(
-            Minecraft mc
-    ) {
-        if (
-                firstPos == null
-                        || secondPos == null
-                        || mc.level == null
-        ) {
-            return 0;
-        }
-
-        int minX = Math.min(
-                firstPos.getX(),
-                secondPos.getX()
-        );
-
-        int minY = Math.min(
-                firstPos.getY(),
-                secondPos.getY()
-        );
-
-        int minZ = Math.min(
-                firstPos.getZ(),
-                secondPos.getZ()
-        );
-
-        int maxX = Math.max(
-                firstPos.getX(),
-                secondPos.getX()
-        );
-
-        int maxY = Math.max(
-                firstPos.getY(),
-                secondPos.getY()
-        );
-
-        int maxZ = Math.max(
-                firstPos.getZ(),
-                secondPos.getZ()
-        );
-
-        int count = 0;
-
-        for (
-                BlockPos pos :
-                BlockPos.betweenClosed(
-                        minX,
-                        minY,
-                        minZ,
-                        maxX,
-                        maxY,
-                        maxZ
-                )
-        ) {
-            if (
-                    mc.level
-                            .getBlockState(pos)
-                            .getBlock()
-                            instanceof AbstractFurnaceBlock
-            ) {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
     public static void tick() {
         if (collectionMode) {
+            Minecraft mc = Minecraft.getInstance();
+            if (!SelectionPreview.isSupportedFurnace(mc, firstPos)) {
+                resetCollection();
+                SelectionPreview.clear();
+                SelectionFeedback.clear();
+                if (mc.player != null) {
+                    PlayerFeedback.actionBar(mc.player, Component.translatable(
+                            "message.furnacedistributor.collect_selection_lost").withStyle(ChatFormatting.YELLOW));
+                }
+            }
             return;
         }
 

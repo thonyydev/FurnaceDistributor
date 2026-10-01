@@ -34,10 +34,15 @@ public final class KeyBindings {
                     CATEGORY
             );
 
+    public static final KeyMapping SETTINGS_KEY = new KeyMapping(
+            "key.furnacedistributor.settings", InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
+
     public static void register() {
         KeyMappingRegistry.register(DISTRIBUTE_KEY);
         KeyMappingRegistry.register(COLLECT_KEY);
         KeyMappingRegistry.register(CANCEL_KEY);
+        KeyMappingRegistry.register(SETTINGS_KEY);
     }
 
     private KeyBindings() {

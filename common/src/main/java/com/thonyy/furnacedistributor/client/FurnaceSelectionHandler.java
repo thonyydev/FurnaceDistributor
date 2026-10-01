@@ -1,5 +1,7 @@
 package com.thonyy.furnacedistributor.client;
 
+import com.thonyy.furnacedistributor.feedback.PlayerFeedback;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -10,18 +12,13 @@ import net.minecraft.world.phys.HitResult;
 
 public final class FurnaceSelectionHandler {
 
-    private static final int MAX_FURNACES = 64;
-
-    // Minecraft roda normalmente a 20 ticks por segundo.
-    // 60 ticks = aproximadamente 3 segundos.
-    private static final int DISPLAY_TICKS = 60;
-
     private static BlockPos firstPos;
     private static BlockPos secondPos;
 
     // A área confirmada continua disponível após o contorno desaparecer.
     private static BlockPos lastConfirmedFirstPos;
     private static BlockPos lastConfirmedSecondPos;
+    private static int lastConfirmedFurnaceCount;
 
     private static boolean selectionMode = false;
 
@@ -34,19 +31,31 @@ public final class FurnaceSelectionHandler {
             return;
         }
 
+        if (!selectionMode && mc.player.isShiftKeyDown()) {
+            if (!hasConfirmedArea()) {
+                PlayerFeedback.actionBar(mc.player, Component.translatable("message.furnacedistributor.no_saved_area")
+                        .withStyle(ChatFormatting.YELLOW));
+                return;
+            }
+            firstPos = lastConfirmedFirstPos;
+            secondPos = lastConfirmedSecondPos;
+            remainingDisplayTicks = ClientConfig.get().selectionDisplayTicks;
+            Collector.resetCollection();
+            SelectionFeedback.confirmed(false, lastConfirmedFurnaceCount);
+            Distributor.distributeItems(firstPos, secondPos);
+            return;
+        }
+
         HitResult hitResult = mc.hitResult;
 
         if (
                 hitResult == null
                         || hitResult.getType() != HitResult.Type.BLOCK
         ) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
+            PlayerFeedback.actionBar(mc.player, Component.translatable(
                                     "message.furnacedistributor.look_at_furnace"
                             )
-                            .withStyle(ChatFormatting.RED),
-                    true
-            );
+                            .withStyle(ChatFormatting.RED));
 
             return;
         }
@@ -60,13 +69,10 @@ public final class FurnaceSelectionHandler {
                         .getBlock()
                         instanceof AbstractFurnaceBlock)
         ) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
+            PlayerFeedback.actionBar(mc.player, Component.translatable(
                                     "message.furnacedistributor.invalid_block"
                             )
-                            .withStyle(ChatFormatting.RED),
-                    true
-            );
+                            .withStyle(ChatFormatting.RED));
 
             return;
         }
@@ -75,19 +81,17 @@ public final class FurnaceSelectionHandler {
          * Primeira posição.
          */
         if (!selectionMode) {
+            Collector.resetCollection();
             firstPos = pos;
             secondPos = null;
 
             selectionMode = true;
             remainingDisplayTicks = 0;
 
-            mc.player.displayClientMessage(
-                    Component.translatable(
+            SelectionFeedback.show(Component.translatable(
                                     "message.furnacedistributor.first_selected"
                             )
-                            .withStyle(ChatFormatting.GREEN),
-                    false
-            );
+                            .withStyle(ChatFormatting.GREEN));
 
             return;
         }
@@ -98,53 +102,41 @@ public final class FurnaceSelectionHandler {
         secondPos = pos;
         selectionMode = false;
 
-        int furnaceCount = countFurnaces(mc);
+        int furnaceCount = SelectionPreview.validate(mc, firstPos, secondPos);
+        if (furnaceCount < 0) {
+            resetSelection();
+            return;
+        }
 
         if (furnaceCount == 0) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
+            PlayerFeedback.actionBar(mc.player, Component.translatable(
                                     "message.furnacedistributor.no_furnaces"
                             )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
+                            .withStyle(ChatFormatting.RED));
 
             resetSelection();
             return;
         }
 
-        if (furnaceCount > MAX_FURNACES) {
-            mc.player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.too_many_furnaces",
-                                    MAX_FURNACES
-                            )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
-
-            resetSelection();
-            return;
-        }
-
-        mc.player.displayClientMessage(
-                Component.translatable(
+        SelectionFeedback.show(Component.translatable(
                                 "message.furnacedistributor.area_selected",
                                 furnaceCount,
-                                KeyBindings.COLLECT_KEY.getTranslatedKeyMessage()
+                                KeyBindings.COLLECT_KEY.getTranslatedKeyMessage(),
+                                mc.options.keyShift.getTranslatedKeyMessage(),
+                                KeyBindings.DISTRIBUTE_KEY.getTranslatedKeyMessage()
                         )
-                        .withStyle(ChatFormatting.GREEN),
-                false
-        );
+                        .withStyle(ChatFormatting.GREEN));
 
         /*
          * Mantém a seleção visível por aproximadamente
          * 3 segundos após confirmar a segunda posição.
          */
-        remainingDisplayTicks = DISPLAY_TICKS;
+        remainingDisplayTicks = ClientConfig.get().selectionDisplayTicks;
 
         lastConfirmedFirstPos = firstPos.immutable();
         lastConfirmedSecondPos = secondPos.immutable();
+        lastConfirmedFurnaceCount = furnaceCount;
+        SelectionFeedback.confirmed(false, furnaceCount);
         Collector.resetCollection();
 
         Distributor.distributeItems(
@@ -175,73 +167,6 @@ public final class FurnaceSelectionHandler {
         }
     }
 
-    private static int countFurnaces(
-            Minecraft mc
-    ) {
-        if (
-                firstPos == null
-                        || secondPos == null
-                        || mc.level == null
-        ) {
-            return 0;
-        }
-
-        int minX = Math.min(
-                firstPos.getX(),
-                secondPos.getX()
-        );
-
-        int minY = Math.min(
-                firstPos.getY(),
-                secondPos.getY()
-        );
-
-        int minZ = Math.min(
-                firstPos.getZ(),
-                secondPos.getZ()
-        );
-
-        int maxX = Math.max(
-                firstPos.getX(),
-                secondPos.getX()
-        );
-
-        int maxY = Math.max(
-                firstPos.getY(),
-                secondPos.getY()
-        );
-
-        int maxZ = Math.max(
-                firstPos.getZ(),
-                secondPos.getZ()
-        );
-
-        int count = 0;
-
-        for (
-                BlockPos pos :
-                BlockPos.betweenClosed(
-                        minX,
-                        minY,
-                        minZ,
-                        maxX,
-                        maxY,
-                        maxZ
-                )
-        ) {
-            if (
-                    mc.level
-                            .getBlockState(pos)
-                            .getBlock()
-                            instanceof AbstractFurnaceBlock
-            ) {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
     public static void resetSelection() {
         firstPos = null;
         secondPos = null;
@@ -266,6 +191,7 @@ public final class FurnaceSelectionHandler {
     public static void clearConfirmedArea() {
         lastConfirmedFirstPos = null;
         lastConfirmedSecondPos = null;
+        lastConfirmedFurnaceCount = 0;
     }
 
     public static boolean isInSelectionMode() {

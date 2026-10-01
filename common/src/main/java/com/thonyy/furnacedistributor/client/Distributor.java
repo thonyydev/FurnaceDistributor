@@ -1,5 +1,7 @@
 package com.thonyy.furnacedistributor.client;
 
+import com.thonyy.furnacedistributor.feedback.PlayerFeedback;
+
 import com.thonyy.furnacedistributor.network.DistributePacket;
 import com.thonyy.furnacedistributor.network.ModNetworking;
 import net.minecraft.ChatFormatting;
@@ -24,13 +26,10 @@ public final class Distributor {
 
         if (player.getMainHandItem().isEmpty()) {
 
-            player.displayClientMessage(
-                    Component.translatable(
+            PlayerFeedback.actionBar(player, Component.translatable(
                                     "message.furnacedistributor.no_item"
                             )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
+                            .withStyle(ChatFormatting.RED));
 
             return;
         }

@@ -7,12 +7,8 @@
   "authors": [
     "${mod_authors}"
   ],
-  "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
-  },
+  "icon": "logo.png",
   "license": "${mod_license}",
-  "icon": "assets/furnacedistributor/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
@@ -20,6 +16,9 @@
     ],
     "client": [
       "com.thonyy.furnacedistributor.fabric.client.FurnaceDistributorFabricClient"
+    ],
+    "modmenu": [
+      "com.thonyy.furnacedistributor.fabric.client.FurnaceDistributorModMenu"
     ]
   },
   "mixins": [
@@ -33,6 +32,6 @@
     "fabric-api": "*"
   },
   "suggests": {
-    "another-mod": "*"
+    "modmenu": "*"
   }
 }

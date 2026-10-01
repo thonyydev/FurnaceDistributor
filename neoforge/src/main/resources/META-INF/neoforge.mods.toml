@@ -9,7 +9,8 @@ version="${version}"
 displayName="${mod_name}"
 authors="${mod_authors}"
 description='''${mod_description}'''
-#logoFile = ""
+logoFile="logo.png"
+logoBlur=false
 
 [[mixins]]
 config = "furnacedistributor.mixins.json"

@@ -15,12 +15,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class RenderHandler {
@@ -31,9 +29,12 @@ public final class RenderHandler {
     ) {
         Minecraft mc = Minecraft.getInstance();
 
-        if (mc.level == null || mc.player == null) {
+        if (mc.level == null || mc.player == null || mc.options.hideGui || mc.screen != null
+                || !mc.player.isAlive() || mc.player.isSpectator()) {
             return;
         }
+
+        if (FurnaceSelectionHandler.getFirstPos() == null && Collector.getFirstCollectPos() == null) return;
 
         MultiBufferSource.BufferSource bufferSource =
                 mc.renderBuffers().bufferSource();
@@ -116,11 +117,7 @@ public final class RenderHandler {
                     FurnaceSelectionHandler.getLookingAtPos(mc);
 
             if (
-                    lookingAt != null
-                            && mc.level
-                            .getBlockState(lookingAt)
-                            .getBlock()
-                            instanceof AbstractFurnaceBlock
+                    SelectionPreview.isSupportedFurnace(mc, lookingAt)
             ) {
                 renderArea(
                         poseStack,
@@ -225,12 +222,10 @@ public final class RenderHandler {
                     FurnaceSelectionHandler.getLookingAtPos(mc);
 
             if (
-                    lookingAt != null
-                            && mc.level
-                            .getBlockState(lookingAt)
-                            .getBlock()
-                            instanceof AbstractFurnaceBlock
+                    SelectionPreview.isSupportedFurnace(mc, lookingAt)
             ) {
+                var scan = SelectionPreview.get(mc, firstPos, lookingAt);
+                if (!scan.valid()) return;
                 renderArea(
                         poseStack,
                         bufferSource,
@@ -252,6 +247,14 @@ public final class RenderHandler {
                         1.0f,
                         1.0f
                 );
+
+                if (ClientConfig.get().showOutlines) {
+                    for (BlockPos furnace : scan.positions()) {
+                        if (!furnace.equals(firstPos) && !furnace.equals(lookingAt)) {
+                            renderBlockOutline(poseStack, bufferSource, furnace, 0.7f, 0.2f, 1.0f, 0.6f);
+                        }
+                    }
+                }
             }
         }
 
@@ -297,7 +300,7 @@ public final class RenderHandler {
         ItemStack heldItem =
                 mc.player.getMainHandItem();
 
-        if (heldItem.isEmpty()) {
+        if (heldItem.isEmpty() || !ClientConfig.get().showItemPreview) {
             return;
         }
 
@@ -493,73 +496,7 @@ public final class RenderHandler {
             BlockPos pos1,
             BlockPos pos2
     ) {
-        List<BlockPos> furnaces =
-                new ArrayList<>();
-
-        if (mc.level == null) {
-            return furnaces;
-        }
-
-        int minX =
-                Math.min(
-                        pos1.getX(),
-                        pos2.getX()
-                );
-
-        int minY =
-                Math.min(
-                        pos1.getY(),
-                        pos2.getY()
-                );
-
-        int minZ =
-                Math.min(
-                        pos1.getZ(),
-                        pos2.getZ()
-                );
-
-        int maxX =
-                Math.max(
-                        pos1.getX(),
-                        pos2.getX()
-                );
-
-        int maxY =
-                Math.max(
-                        pos1.getY(),
-                        pos2.getY()
-                );
-
-        int maxZ =
-                Math.max(
-                        pos1.getZ(),
-                        pos2.getZ()
-                );
-
-        for (
-                BlockPos pos :
-                BlockPos.betweenClosed(
-                        minX,
-                        minY,
-                        minZ,
-                        maxX,
-                        maxY,
-                        maxZ
-                )
-        ) {
-            if (
-                    mc.level
-                            .getBlockState(pos)
-                            .getBlock()
-                            instanceof AbstractFurnaceBlock
-            ) {
-                furnaces.add(
-                        pos.immutable()
-                );
-            }
-        }
-
-        return furnaces;
+        return SelectionPreview.get(mc, pos1, pos2).positions();
     }
 
     private static void renderBlockOutline(
@@ -571,6 +508,7 @@ public final class RenderHandler {
             float b,
             float alpha
     ) {
+        if (!ClientConfig.get().showOutlines) return;
         VertexConsumer consumer =
                 bufferSource.getBuffer(
                         RenderType.lines()
@@ -622,6 +560,7 @@ public final class RenderHandler {
             float alpha,
             double glowSize
     ) {
+        if (!ClientConfig.get().showOutlines) return;
         int minX =
                 Math.min(
                         pos1.getX(),

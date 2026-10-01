@@ -1,261 +1,90 @@
 package com.thonyy.furnacedistributor.logic;
 
+import com.thonyy.furnacedistributor.feedback.PlayerFeedback;
+
+import com.thonyy.furnacedistributor.config.ServerConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.AbstractCookingRecipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
-import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
+import net.minecraft.world.level.block.entity.BlastFurnaceBlockEntity;
+import net.minecraft.world.level.block.entity.SmokerBlockEntity;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class DistributionManager {
-
-    public static void distribute(
-            ServerPlayer player,
-            BlockPos pos1,
-            BlockPos pos2
-    ) {
+    public static void distribute(ServerPlayer player, BlockPos pos1, BlockPos pos2) {
+        List<AbstractFurnaceBlockEntity> furnaces = OperationGuard.find(player, pos1, pos2);
+        if (furnaces == null) return;
         ItemStack heldItem = player.getMainHandItem();
-
         if (heldItem.isEmpty()) {
-            player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.no_item"
-                            )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
-
+            OperationGuard.error(player, "no_item");
             return;
         }
-
-        List<AbstractFurnaceBlockEntity> furnaces =
-                findFurnaces(player, pos1, pos2);
-
         if (furnaces.isEmpty()) {
-            player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.no_furnaces"
-                            )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
-
+            OperationGuard.error(player, "no_furnaces");
             return;
         }
-
-        /*
-         * API vanilla compartilhada por Fabric e NeoForge.
-         */
-        boolean isFuel =
-                AbstractFurnaceBlockEntity.isFuel(heldItem);
-
-        SingleRecipeInput recipeInput = new SingleRecipeInput(heldItem.copy());
-
-        boolean isSmeltable =
-                player.level()
-                        .getRecipeManager()
-                        .getRecipeFor(
-                                RecipeType.SMELTING,
-                                recipeInput,
-                                player.level()
-                        )
-                        .isPresent();
-
-        if (!isFuel && !isSmeltable) {
-            player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.invalid_item"
-                            )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
-
+        // Preserve the established preference for fuel when an item is both fuel and input.
+        boolean fuel = AbstractFurnaceBlockEntity.isFuel(heldItem);
+        int slot = fuel ? 1 : 0;
+        int[] capacities = new int[furnaces.size()];
+        int eligible = 0;
+        boolean accepted = false;
+        SingleRecipeInput input = new SingleRecipeInput(heldItem.copy());
+        Map<RecipeType<?>, Boolean> recipes = new HashMap<>();
+        for (int i = 0; i < furnaces.size(); i++) {
+            AbstractFurnaceBlockEntity furnace = furnaces.get(i);
+            RecipeType<? extends AbstractCookingRecipe> type =
+                    furnace instanceof BlastFurnaceBlockEntity ? RecipeType.BLASTING
+                            : furnace instanceof SmokerBlockEntity ? RecipeType.SMOKING : RecipeType.SMELTING;
+            boolean validInput = fuel || recipes.computeIfAbsent(type, ignored ->
+                    player.level().getRecipeManager().getRecipeFor(type, input, player.level()).isPresent());
+            if (!validInput || !furnace.canPlaceItem(slot, heldItem)) continue;
+            accepted = true;
+            ItemStack existing = furnace.getItem(slot);
+            if (!existing.isEmpty() && !ItemStack.isSameItemSameComponents(existing, heldItem)) continue;
+            capacities[i] = Math.max(0, furnace.getMaxStackSize(heldItem) - existing.getCount());
+            if (capacities[i] > 0) eligible++;
+        }
+        if (eligible == 0) {
+            OperationGuard.error(player, accepted ? "no_capacity" : "invalid_item");
             return;
         }
-
-        int totalItems = heldItem.getCount();
-
-        int itemsPerFurnace =
-                totalItems / furnaces.size();
-
-        int remainder =
-                totalItems % furnaces.size();
-
-        if (itemsPerFurnace == 0) {
-            player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.not_enough_items"
-                            )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
-
+        ServerConfig config = ServerConfig.get();
+        int targets = config.smartDistribution ? eligible : furnaces.size();
+        if (!config.allowPartialDistribution && heldItem.getCount() < targets) {
+            OperationGuard.error(player, "not_enough_items");
             return;
         }
-
+        int[] amounts = DistributionPlan.allocate(heldItem.getCount(), capacities, config.smartDistribution);
         int distributed = 0;
-
-        /*
-         * Furnace:
-         *
-         * 0 = input
-         * 1 = fuel
-         * 2 = output
-         */
-        int slot = isFuel ? 1 : 0;
-
-        for (AbstractFurnaceBlockEntity furnace : furnaces) {
-
-            ItemStack slotStack =
-                    furnace.getItem(slot);
-
-            if (!canInsert(slotStack, heldItem)) {
-                continue;
-            }
-
-            int amount = itemsPerFurnace;
-
-            if (remainder > 0) {
-                amount++;
-                remainder--;
-            }
-
-            int inserted =
-                    insertIntoFurnace(
-                            furnace,
-                            slot,
-                            heldItem,
-                            amount
-                    );
-
-            distributed += inserted;
-        }
-
-        heldItem.shrink(distributed);
-
-        player.inventoryMenu.broadcastChanges();
-
-        player.displayClientMessage(
-                Component.translatable(
-                                "message.furnacedistributor.distributed_items",
-                                distributed,
-                                furnaces.size()
-                        )
-                        .withStyle(ChatFormatting.GREEN),
-                false
-        );
-    }
-
-    private static List<AbstractFurnaceBlockEntity> findFurnaces(
-            ServerPlayer player,
-            BlockPos pos1,
-            BlockPos pos2
-    ) {
-        List<AbstractFurnaceBlockEntity> furnaces =
-                new ArrayList<>();
-
-        int minX = Math.min(pos1.getX(), pos2.getX());
-        int minY = Math.min(pos1.getY(), pos2.getY());
-        int minZ = Math.min(pos1.getZ(), pos2.getZ());
-
-        int maxX = Math.max(pos1.getX(), pos2.getX());
-        int maxY = Math.max(pos1.getY(), pos2.getY());
-        int maxZ = Math.max(pos1.getZ(), pos2.getZ());
-
-        for (BlockPos pos :
-                BlockPos.betweenClosed(
-                        minX,
-                        minY,
-                        minZ,
-                        maxX,
-                        maxY,
-                        maxZ
-                )) {
-
-            if (!(player.level()
-                    .getBlockState(pos)
-                    .getBlock()
-                    instanceof AbstractFurnaceBlock)) {
-                continue;
-            }
-
-            if (player.level()
-                    .getBlockEntity(pos)
-                    instanceof AbstractFurnaceBlockEntity furnace) {
-
-                furnaces.add(furnace);
-            }
-        }
-
-        return furnaces;
-    }
-
-    private static boolean canInsert(
-            ItemStack furnaceStack,
-            ItemStack heldItem
-    ) {
-        return furnaceStack.isEmpty()
-                || (
-                ItemStack.isSameItemSameComponents(
-                        furnaceStack,
-                        heldItem
-                )
-                        && furnaceStack.getCount()
-                        < furnaceStack.getMaxStackSize()
-        );
-    }
-
-    private static int insertIntoFurnace(
-            AbstractFurnaceBlockEntity furnace,
-            int slot,
-            ItemStack source,
-            int requestedAmount
-    ) {
-        ItemStack furnaceStack =
-                furnace.getItem(slot);
-
-        if (furnaceStack.isEmpty()) {
-
-            int amount = Math.min(
-                    requestedAmount,
-                    source.getMaxStackSize()
-            );
-
-            ItemStack newStack = source.copy();
-            newStack.setCount(amount);
-
-            furnace.setItem(slot, newStack);
+        int used = 0;
+        for (int i = 0; i < amounts.length; i++) {
+            if (amounts[i] == 0) continue;
+            AbstractFurnaceBlockEntity furnace = furnaces.get(i);
+            ItemStack inserted = furnace.getItem(slot).isEmpty() ? heldItem.copy() : furnace.getItem(slot).copy();
+            inserted.setCount(furnace.getItem(slot).getCount() + amounts[i]);
+            furnace.setItem(slot, inserted);
             furnace.setChanged();
-
-            return amount;
+            distributed += amounts[i];
+            used++;
         }
-
-        int availableSpace =
-                furnaceStack.getMaxStackSize()
-                        - furnaceStack.getCount();
-
-        int amount =
-                Math.min(
-                        requestedAmount,
-                        availableSpace
-                );
-
-        if (amount <= 0) {
-            return 0;
-        }
-
-        furnaceStack.grow(amount);
-        furnace.setChanged();
-
-        return amount;
+        heldItem.shrink(distributed);
+        player.getInventory().setChanged();
+        player.inventoryMenu.broadcastChanges();
+        // One complete result: a second action-bar message would immediately hide the quantities.
+        PlayerFeedback.actionBar(player, Component.translatable(heldItem.isEmpty()
+                        ? "message.furnacedistributor.distributed_items" : "message.furnacedistributor.distributed_items_partial",
+                distributed, used, heldItem.getCount()).withStyle(heldItem.isEmpty() ? ChatFormatting.GREEN : ChatFormatting.YELLOW));
     }
 
-    private DistributionManager() {
-    }
+    private DistributionManager() { }
 }

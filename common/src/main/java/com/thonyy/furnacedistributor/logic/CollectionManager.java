@@ -1,14 +1,15 @@
 package com.thonyy.furnacedistributor.logic;
 
+import com.thonyy.furnacedistributor.feedback.PlayerFeedback;
+
+import com.thonyy.furnacedistributor.config.ServerConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class CollectionManager {
@@ -19,16 +20,15 @@ public final class CollectionManager {
             BlockPos pos2
     ) {
         List<AbstractFurnaceBlockEntity> furnaces =
-                findFurnaces(player, pos1, pos2);
+                OperationGuard.find(player, pos1, pos2);
+
+        if (furnaces == null) return;
 
         if (furnaces.isEmpty()) {
-            player.displayClientMessage(
-                    Component.translatable(
+            PlayerFeedback.actionBar(player, Component.translatable(
                                     "message.furnacedistributor.no_valid_furnaces"
                             )
-                            .withStyle(ChatFormatting.RED),
-                    false
-            );
+                            .withStyle(ChatFormatting.RED));
 
             return;
         }
@@ -78,114 +78,34 @@ public final class CollectionManager {
             }
 
             furnace.setChanged();
+            if (ServerConfig.get().collectExperience) {
+                // Vanilla clears the recipe ledger, including after a partial extraction.
+                furnace.awardUsedRecipesAndPopExperience(player);
+                furnace.setChanged();
+            }
         }
 
         if (totalCollected == 0) {
 
-            player.displayClientMessage(
-                    Component.translatable(
+            PlayerFeedback.actionBar(player, Component.translatable(
                                     hasRemainingItems
                                             ? "message.furnacedistributor.inventory_full"
                                             : "message.furnacedistributor.no_smelted_items"
                             )
-                            .withStyle(ChatFormatting.YELLOW),
-                    false
-            );
+                            .withStyle(ChatFormatting.YELLOW));
 
         } else {
 
-            player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.collected_items",
+            PlayerFeedback.actionBar(player, Component.translatable(
+                                    hasRemainingItems ? "message.furnacedistributor.collected_items_partial"
+                                            : "message.furnacedistributor.collected_items",
                                     totalCollected,
                                     furnacesWithItems
                             )
-                            .withStyle(ChatFormatting.GREEN),
-                    false
-            );
+                            .withStyle(hasRemainingItems ? ChatFormatting.YELLOW : ChatFormatting.GREEN));
         }
 
-        if (totalCollected > 0 && hasRemainingItems) {
-            player.displayClientMessage(
-                    Component.translatable(
-                                    "message.furnacedistributor.collection_partial"
-                            )
-                            .withStyle(ChatFormatting.YELLOW),
-                    false
-            );
-        }
-
-        player.inventoryMenu.broadcastChanges();
-    }
-
-    private static List<AbstractFurnaceBlockEntity> findFurnaces(
-            ServerPlayer player,
-            BlockPos pos1,
-            BlockPos pos2
-    ) {
-        List<AbstractFurnaceBlockEntity> furnaces =
-                new ArrayList<>();
-
-        int minX = Math.min(
-                pos1.getX(),
-                pos2.getX()
-        );
-
-        int minY = Math.min(
-                pos1.getY(),
-                pos2.getY()
-        );
-
-        int minZ = Math.min(
-                pos1.getZ(),
-                pos2.getZ()
-        );
-
-        int maxX = Math.max(
-                pos1.getX(),
-                pos2.getX()
-        );
-
-        int maxY = Math.max(
-                pos1.getY(),
-                pos2.getY()
-        );
-
-        int maxZ = Math.max(
-                pos1.getZ(),
-                pos2.getZ()
-        );
-
-        for (
-                BlockPos pos :
-                BlockPos.betweenClosed(
-                        minX,
-                        minY,
-                        minZ,
-                        maxX,
-                        maxY,
-                        maxZ
-                )
-        ) {
-            if (
-                    !(player.level()
-                            .getBlockState(pos)
-                            .getBlock()
-                            instanceof AbstractFurnaceBlock)
-            ) {
-                continue;
-            }
-
-            if (
-                    player.level()
-                            .getBlockEntity(pos)
-                            instanceof AbstractFurnaceBlockEntity furnace
-            ) {
-                furnaces.add(furnace);
-            }
-        }
-
-        return furnaces;
+        if (totalCollected > 0) player.inventoryMenu.broadcastChanges();
     }
 
     private CollectionManager() {
