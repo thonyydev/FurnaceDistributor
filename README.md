@@ -272,6 +272,9 @@ Optional:
 
 ## Building From Source
 
+Install JDK 21. Set `JAVA_HOME` to your installation if necessary; machine-specific
+Java paths belong in your environment or user Gradle configuration, not this repository.
+
 Clone the repository:
 
 ```bash

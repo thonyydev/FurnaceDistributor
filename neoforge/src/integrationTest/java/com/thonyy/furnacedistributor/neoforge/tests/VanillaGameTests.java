@@ -50,6 +50,11 @@ public class VanillaGameTests {
         return helper.getBlockEntity(FIRST.offset(index, 0, 0));
     }
 
+    private static int experience(GameTestHelper helper) {
+        return helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).stream()
+                .mapToInt(orb -> orb.getValue() * orb.saveWithoutId(new net.minecraft.nbt.CompoundTag()).getInt("Count")).sum();
+    }
+
     @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void startupAndVanilla128(GameTestHelper helper) {
         helper.assertTrue(ModList.get().isLoaded("ironfurnaces") == Boolean.getBoolean("furnacedistributor.tests.expectIron"),
@@ -123,6 +128,8 @@ public class VanillaGameTests {
         var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
                 new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
         furnace.setRecipeUsed(recipe);
+        // Two iron recipes guarantee at least one XP; one recipe can legitimately round down to zero.
+        furnace.setRecipeUsed(recipe);
         furnace.setItem(2, new ItemStack(Items.IRON_INGOT, 10));
         ServerPlayer player = player(helper, ItemStack.EMPTY);
         for (int i = 0; i < player.getInventory().items.size(); i++) player.getInventory().items.set(i, new ItemStack(Items.STONE, 64));
@@ -132,13 +139,61 @@ public class VanillaGameTests {
         collect(helper, player, 1);
         helper.assertTrue(furnace.getItem(2).getCount() == 6 && player.getInventory().items.get(1).getCount() == 64, "partial output");
         helper.assertTrue(!helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "vanilla XP delivered");
-        int orbs = helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).size();
+        int experience = experience(helper);
         player.getInventory().items.set(1, ItemStack.EMPTY);
         collect(helper, player, 1);
         collect(helper, player, 1);
         helper.assertTrue(furnace.getItem(2).isEmpty() && player.getInventory().items.get(1).getCount() == 6
-                && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).size() == orbs, "repeat: no item or XP duplication");
+                && experience(helper) == experience, "repeat: no item or XP duplication");
         helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void distributionAndCollectionShareCooldown(GameTestHelper helper) {
+        var furnace = furnace(helper, 0, Blocks.FURNACE);
+        var player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
+        int cooldown = ServerConfig.get().requestCooldownTicks;
+        try {
+            ServerConfig.get().requestCooldownTicks = 5;
+            distribute(helper, player, 1);
+            helper.assertTrue(furnace.getItem(0).getCount() == 16 && player.getMainHandItem().isEmpty(), "first request accepted");
+            furnace.setItem(2, new ItemStack(Items.IRON_INGOT, 3));
+            collect(helper, player, 1);
+            helper.assertTrue(furnace.getItem(2).getCount() == 3 && player.getInventory().isEmpty(),
+                    "distribution prevents collection in the same tick");
+            ServerConfig.get().requestCooldownTicks = 0;
+            collect(helper, player, 1);
+            helper.assertTrue(furnace.getItem(2).isEmpty() && player.getMainHandItem().getCount() == 3, "collection accepted with cooldown disabled");
+            ServerConfig.get().requestCooldownTicks = 5;
+            player.getInventory().items.set(0, new ItemStack(Items.COBBLESTONE, 8));
+            distribute(helper, player, 1);
+            helper.assertTrue(furnace.getItem(0).getCount() == 16 && player.getMainHandItem().getCount() == 8,
+                    "collection prevents distribution in the same tick");
+        } finally {
+            ServerConfig.get().requestCooldownTicks = cooldown;
+        }
+        helper.runAfterDelay(4, () -> {
+            int previous = ServerConfig.get().requestCooldownTicks;
+            try {
+                ServerConfig.get().requestCooldownTicks = 5;
+                distribute(helper, player, 1);
+                helper.assertTrue(furnace.getItem(0).getCount() == 16 && player.getMainHandItem().getCount() == 8, "cooldown still active at tick four");
+            } finally {
+                ServerConfig.get().requestCooldownTicks = previous;
+            }
+        });
+        helper.runAfterDelay(5, () -> {
+            int previous = ServerConfig.get().requestCooldownTicks;
+            try {
+                ServerConfig.get().requestCooldownTicks = 5;
+                distribute(helper, player, 1);
+                helper.assertTrue(furnace.getItem(0).getCount() == 24 && player.getMainHandItem().isEmpty(),
+                        "cooldown expires at tick five; refusals do not postpone it");
+                helper.succeed();
+            } finally {
+                ServerConfig.get().requestCooldownTicks = previous;
+            }
+        });
     }
 
     @GameTest(template = "empty", templateNamespace = NAMESPACE)
@@ -174,6 +229,39 @@ public class VanillaGameTests {
         furnace.loadWithComponents(tag, helper.getLevel().registryAccess());
         distribute(helper, player, 1);
         helper.assertTrue(furnace.getItem(0).isEmpty() && player.getMainHandItem().getCount() == 16, "vanilla lock respected");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void secondLockedFurnaceRejectsDistributionAndCollection(GameTestHelper helper) {
+        var first = furnace(helper, 0, Blocks.FURNACE);
+        var second = furnace(helper, 1, Blocks.FURNACE);
+        var tag = new net.minecraft.nbt.CompoundTag();
+        tag.putString("Lock", "key required");
+        second.loadWithComponents(tag, helper.getLevel().registryAccess());
+        var player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
+        boolean partial = ServerConfig.get().allowPartialDistribution;
+        try {
+            // Partial item allocation must never turn an authorization refusal into a partial transfer.
+            ServerConfig.get().allowPartialDistribution = true;
+            distribute(helper, player, 2);
+            helper.assertTrue(first.getItem(0).isEmpty() && second.getItem(0).isEmpty()
+                    && player.getMainHandItem().getCount() == 16, "second lock rejects all distribution before any debit");
+            first.setItem(2, new ItemStack(Items.IRON_INGOT, 10));
+            second.setItem(2, new ItemStack(Items.IRON_INGOT, 5));
+            var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+                    new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
+            first.setRecipeUsed(recipe);
+            first.setRecipeUsed(recipe);
+            collect(helper, player, 2);
+            helper.assertTrue(first.getItem(2).getCount() == 10 && second.getItem(2).getCount() == 5
+                    && player.getInventory().items.stream().noneMatch(stack -> stack.is(Items.IRON_INGOT))
+                    && player.getMainHandItem().getCount() == 16
+                    && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(),
+                    "second lock rejects all collection and XP before any extraction");
+        } finally {
+            ServerConfig.get().allowPartialDistribution = partial;
+        }
         helper.succeed();
     }
 }

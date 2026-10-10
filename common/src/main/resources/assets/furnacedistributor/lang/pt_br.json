@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "%s Itens Continuam na Sua Mão Porque Algumas Fornalhas Não Puderam Recebê-los.",
   "message.furnacedistributor.config_save_failed": "As Configurações Não Foram Salvas. Alterações Podem Ser Perdidas ao Reiniciar; Consulte o Log.",
   "hud.furnacedistributor.select_second": "Selecione a Segunda Fornalha com %s",
-  "hud.furnacedistributor.estimate": "%s Fornalha(s) · %s Itens (Estimativa)",
+  "hud.furnacedistributor.estimate": "%s Fornalha(s) · %s Itens na mão (Quantidades definidas pelo servidor)",
   "hud.furnacedistributor.furnaces": "%s Fornalha(s) na Área",
   "hud.furnacedistributor.cancel": "%s: Cancelar e Limpar Área Salva",
   "hud.furnacedistributor.saved_area": "Área Salva: %s + %s para Distribuir, %s para Coletar",

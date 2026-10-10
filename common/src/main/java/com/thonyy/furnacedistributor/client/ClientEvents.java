@@ -5,6 +5,7 @@ import com.thonyy.furnacedistributor.feedback.PlayerFeedback;
 import dev.architectury.event.events.client.ClientTickEvent;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -47,35 +48,40 @@ public final class ClientEvents {
             return;
         }
 
-        if (KeyBindings.SETTINGS_KEY.consumeClick()) {
+        if (consumeClicks(KeyBindings.SETTINGS_KEY)) {
             drainKeys();
             minecraft.setScreen(new DistributorSettingsScreen());
             return;
         }
 
         // Cancel wins over action keys queued in the same tick; never collect while cancelling.
-        if (KeyBindings.CANCEL_KEY.consumeClick()) {
+        if (consumeClicks(KeyBindings.CANCEL_KEY)) {
             drainKeys();
             handleCancel(minecraft);
             return;
         }
 
-        while (KeyBindings.DISTRIBUTE_KEY.consumeClick()) {
+        if (consumeClicks(KeyBindings.DISTRIBUTE_KEY)) {
             FurnaceSelectionHandler.handleSelection();
         }
 
-        if (KeyBindings.COLLECT_KEY.consumeClick()) {
-            // Multiple queued clicks must not start and confirm a new selection in one tick.
-            while (KeyBindings.COLLECT_KEY.consumeClick()) { }
+        if (consumeClicks(KeyBindings.COLLECT_KEY)) {
             Collector.handleCollection();
         }
     }
 
     private static void drainKeys() {
-        while (KeyBindings.DISTRIBUTE_KEY.consumeClick()) { }
-        while (KeyBindings.COLLECT_KEY.consumeClick()) { }
-        while (KeyBindings.CANCEL_KEY.consumeClick()) { }
-        while (KeyBindings.SETTINGS_KEY.consumeClick()) { }
+        consumeClicks(KeyBindings.DISTRIBUTE_KEY);
+        consumeClicks(KeyBindings.COLLECT_KEY);
+        consumeClicks(KeyBindings.CANCEL_KEY);
+        consumeClicks(KeyBindings.SETTINGS_KEY);
+    }
+
+    private static boolean consumeClicks(KeyMapping key) {
+        boolean clicked = key.consumeClick();
+        // One action per key/tick; queued repeats cannot start and confirm the same selection.
+        while (key.consumeClick()) { }
+        return clicked;
     }
 
     private static void handleCancel(Minecraft minecraft) {

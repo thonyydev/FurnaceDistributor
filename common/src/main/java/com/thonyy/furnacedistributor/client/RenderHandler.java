@@ -3,6 +3,7 @@ package com.thonyy.furnacedistributor.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import com.thonyy.furnacedistributor.logic.FurnaceArea;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -304,29 +305,8 @@ public final class RenderHandler {
             return;
         }
 
-        List<BlockPos> furnaces =
-                getFurnacesInArea(
-                        mc,
-                        pos1,
-                        pos2
-                );
-
-        if (furnaces.isEmpty()) {
-            return;
-        }
-
-        int totalItems =
-                heldItem.getCount();
-
-        int itemsPerFurnace =
-                totalItems / furnaces.size();
-
-        int remainder =
-                totalItems % furnaces.size();
-
-        if (itemsPerFurnace == 0) {
-            return;
-        }
+        List<BlockPos> furnaces = SelectionPreview.get(mc, pos1, pos2).positions();
+        if (furnaces.isEmpty()) return;
 
         ItemRenderer itemRenderer =
                 mc.getItemRenderer();
@@ -343,17 +323,8 @@ public final class RenderHandler {
                         time * Math.PI * 2.0
                 ) * 0.1f;
 
-        for (int i = 0; i < furnaces.size(); i++) {
-            BlockPos furnacePos =
-                    furnaces.get(i);
-
-            int amount =
-                    itemsPerFurnace;
-
-            if (i < remainder) {
-                amount++;
-            }
-
+        // Server inventories and distribution settings are not synchronized with this preview.
+        for (BlockPos furnacePos : furnaces) {
             Vec3 itemPos =
                     Vec3.atCenterOf(furnacePos)
                             .add(
@@ -410,7 +381,7 @@ public final class RenderHandler {
                     poseStack,
                     bufferSource,
                     font,
-                    String.valueOf(amount),
+                    "?",
                     itemPos.add(
                             0,
                             -0.35,
@@ -491,14 +462,6 @@ public final class RenderHandler {
         poseStack.popPose();
     }
 
-    private static List<BlockPos> getFurnacesInArea(
-            Minecraft mc,
-            BlockPos pos1,
-            BlockPos pos2
-    ) {
-        return SelectionPreview.get(mc, pos1, pos2).positions();
-    }
-
     private static void renderBlockOutline(
             PoseStack poseStack,
             MultiBufferSource.BufferSource bufferSource,
@@ -561,59 +524,11 @@ public final class RenderHandler {
             double glowSize
     ) {
         if (!ClientConfig.get().showOutlines) return;
-        int minX =
-                Math.min(
-                        pos1.getX(),
-                        pos2.getX()
-                );
-
-        int minY =
-                Math.min(
-                        pos1.getY(),
-                        pos2.getY()
-                );
-
-        int minZ =
-                Math.min(
-                        pos1.getZ(),
-                        pos2.getZ()
-                );
-
-        int maxX =
-                Math.max(
-                        pos1.getX(),
-                        pos2.getX()
-                );
-
-        int maxY =
-                Math.max(
-                        pos1.getY(),
-                        pos2.getY()
-                );
-
-        int maxZ =
-                Math.max(
-                        pos1.getZ(),
-                        pos2.getZ()
-                );
-
-        VertexConsumer consumer =
-                bufferSource.getBuffer(
-                        RenderType.lines()
-                );
-
-        /*
-         * Glow externo.
-         */
-        AABB glowBox =
-                new AABB(
-                        minX,
-                        minY,
-                        minZ,
-                        maxX + 1,
-                        maxY + 1,
-                        maxZ + 1
-                ).inflate(glowSize);
+        var bounds = FurnaceArea.bounds(pos1, pos2);
+        AABB mainBox = new AABB(bounds.minX(), bounds.minY(), bounds.minZ(),
+                bounds.maxX() + 1.0, bounds.maxY() + 1.0, bounds.maxZ() + 1.0);
+        VertexConsumer consumer = bufferSource.getBuffer(RenderType.lines());
+        AABB glowBox = mainBox.inflate(glowSize);
 
         LevelRenderer.renderLineBox(
                 poseStack,
@@ -624,19 +539,6 @@ public final class RenderHandler {
                 b,
                 alpha * 0.35f
         );
-
-        /*
-         * Caixa principal.
-         */
-        AABB mainBox =
-                new AABB(
-                        minX,
-                        minY,
-                        minZ,
-                        maxX + 1,
-                        maxY + 1,
-                        maxZ + 1
-                );
 
         LevelRenderer.renderLineBox(
                 poseStack,

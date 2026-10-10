@@ -4,6 +4,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thonyy.furnacedistributor.client.ClientConfig;
 import com.thonyy.furnacedistributor.client.CollectionShortcut;
+import com.thonyy.furnacedistributor.client.ClientEvents;
+import com.thonyy.furnacedistributor.client.FurnaceSelectionHandler;
+import com.thonyy.furnacedistributor.client.SelectionFeedback;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.KeyMapping;
 import com.thonyy.furnacedistributor.config.ConfigFile;
 import com.thonyy.furnacedistributor.config.ServerConfig;
 import com.thonyy.furnacedistributor.feedback.FeedbackThrottle;
@@ -26,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /** Executable regression suite: assertions throw even when the JVM has assertions disabled. */
@@ -40,6 +46,7 @@ public final class RegressionChecks {
         translations(Path.of(arguments[0]));
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+        clientInputAndSelection();
         inventory();
         checks += FurnaceTransferChecks.run();
         packets();
@@ -59,6 +66,46 @@ public final class RegressionChecks {
         check(!AreaBounds.between(0, 0, 0, 10, 0, 10).isWithinDistance(0.5, 0.5, 0.5, 10), "farthest crossed corner");
         check(AreaBounds.between(0, 0, 0, 8, 0, 0).isWithinDistance(0.5, 0.5, 0.5, 8), "distance boundary");
         check(!AreaBounds.between(0, 0, 0, 8, 0, 0).isWithinDistance(0.49, 0.5, 0.5, 8), "distance above boundary");
+    }
+
+    private static void clientInputAndSelection() throws ReflectiveOperationException {
+        // Exercise client state without launching Minecraft or exposing test-only public methods.
+        var consume = ClientEvents.class.getDeclaredMethod("consumeClicks", KeyMapping.class);
+        consume.setAccessible(true);
+        var key = new KeyMapping("regression.clicks", InputConstants.Type.MOUSE, 7, KeyMapping.CATEGORY_MISC);
+        check(!(boolean) consume.invoke(null, key), "empty key queue does nothing");
+        for (int clicks : new int[]{1, 2, 20}) {
+            for (int i = 0; i < clicks; i++) KeyMapping.click(key.getDefaultKey());
+            int actions = 0;
+            if ((boolean) consume.invoke(null, key)) actions++;
+            check(actions == 1 && !key.consumeClick(), "one action and no queued repeat for " + clicks + " clicks");
+            check(!(boolean) consume.invoke(null, key), "next tick does not inherit clicks");
+        }
+        var tick = FurnaceSelectionHandler.class.getDeclaredMethod("tick", boolean.class);
+        tick.setAccessible(true);
+        BlockPos first = new BlockPos(3, 64, 5);
+        try {
+            for (var entry : Map.<String, Object>of("firstPos", first, "selectionMode", true,
+                    "lastConfirmedFirstPos", first, "lastConfirmedSecondPos", first.offset(2, 0, 0)).entrySet()) {
+                var field = FurnaceSelectionHandler.class.getDeclaredField(entry.getKey());
+                field.setAccessible(true);
+                field.set(null, entry.getValue());
+            }
+            tick.invoke(null, true);
+            check(FurnaceSelectionHandler.isInSelectionMode() && first.equals(FurnaceSelectionHandler.getFirstPos()),
+                    "valid first furnace retains pending selection");
+            SelectionFeedback.confirmed(false, 2);
+            tick.invoke(null, false);
+            check(!FurnaceSelectionHandler.isInSelectionMode() && FurnaceSelectionHandler.getFirstPos() == null
+                    && FurnaceSelectionHandler.getSecondPos() == null && !SelectionFeedback.isConfirmed(false),
+                    "removed first furnace cancels selection and feedback");
+            check(FurnaceSelectionHandler.hasConfirmedArea()
+                    && first.equals(FurnaceSelectionHandler.getLastConfirmedFirstPos()), "cancel preserves saved area");
+        } finally {
+            FurnaceSelectionHandler.resetSelection();
+            FurnaceSelectionHandler.clearConfirmedArea();
+            SelectionFeedback.clear();
+        }
     }
 
     private static void distribution() {

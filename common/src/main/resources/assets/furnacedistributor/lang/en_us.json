@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "%s Items Remain in Your Hand Because Some Furnaces Could Not Accept Them.",
   "message.furnacedistributor.config_save_failed": "Settings Were Not Saved. Changes May Be Lost after Restarting; See the Log.",
   "hud.furnacedistributor.select_second": "Select the Second Furnace with %s",
-  "hud.furnacedistributor.estimate": "%s Furnace(s) · %s Held Items (Estimate)",
+  "hud.furnacedistributor.estimate": "%s Furnace(s) · %s Held Items (Amounts determined by server)",
   "hud.furnacedistributor.furnaces": "%s Furnace(s) in the Area",
   "hud.furnacedistributor.cancel": "%s: Cancel and Clear Saved Area",
   "hud.furnacedistributor.saved_area": "Saved Area: %s + %s to Distribute, %s to Collect",

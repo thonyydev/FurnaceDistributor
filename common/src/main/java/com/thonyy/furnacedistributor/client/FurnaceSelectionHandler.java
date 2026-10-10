@@ -140,11 +140,22 @@ public final class FurnaceSelectionHandler {
     }
 
     public static void tick() {
-        /*
-         * Enquanto ainda estamos esperando a segunda posição,
-         * a primeira deve continuar sendo exibida.
-         */
+        Minecraft mc = Minecraft.getInstance();
+        boolean firstAvailable = !selectionMode || SelectionPreview.isSupportedFurnace(mc, firstPos);
+        tick(firstAvailable);
+        if (!firstAvailable && mc.player != null) {
+            PlayerFeedback.actionBar(mc.player, Component.translatable("message.furnacedistributor.selection_cancelled")
+                    .withStyle(ChatFormatting.YELLOW));
+        }
+    }
+
+    private static void tick(boolean firstAvailable) {
         if (selectionMode) {
+            if (!firstAvailable) {
+                resetSelection();
+                SelectionPreview.clear();
+                SelectionFeedback.clear();
+            }
             return;
         }
 
