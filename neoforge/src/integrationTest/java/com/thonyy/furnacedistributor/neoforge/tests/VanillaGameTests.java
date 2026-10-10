@@ -1,0 +1,179 @@
+package com.thonyy.furnacedistributor.neoforge.tests;
+
+import com.thonyy.furnacedistributor.config.ServerConfig;
+import com.thonyy.furnacedistributor.furnace.FurnaceAccessRegistry;
+import com.thonyy.furnacedistributor.logic.*;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+
+@PrefixGameTestTemplate(false)
+public class VanillaGameTests {
+    static final String NAMESPACE = "furnacedistributor_tests";
+    static final BlockPos FIRST = new BlockPos(1, 1, 1);
+
+    static ServerPlayer player(GameTestHelper helper, ItemStack stack) {
+        ServerConfig.get().requestCooldownTicks = 0;
+        ServerConfig.get().smartDistribution = true;
+        ServerConfig.get().allowPartialDistribution = false;
+        ServerConfig.get().collectExperience = true;
+        ServerPlayer player = helper.makeMockServerPlayerInLevel();
+        BlockPos pos = helper.absolutePos(FIRST);
+        player.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        player.getInventory().items.set(0, stack);
+        player.getInventory().selected = 0;
+        return player;
+    }
+
+    static BlockPos absolute(GameTestHelper helper, int index) { return helper.absolutePos(FIRST.offset(index, 0, 0)); }
+    static void distribute(GameTestHelper helper, ServerPlayer player, int count) {
+        DistributionManager.distribute(player, absolute(helper, 0), absolute(helper, count - 1));
+    }
+    static void collect(GameTestHelper helper, ServerPlayer player, int count) {
+        CollectionManager.collect(player, absolute(helper, 0), absolute(helper, count - 1));
+    }
+    static AbstractFurnaceBlockEntity furnace(GameTestHelper helper, int index, Block block) {
+        helper.setBlock(FIRST.offset(index, 0, 0), block);
+        return helper.getBlockEntity(FIRST.offset(index, 0, 0));
+    }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void startupAndVanilla128(GameTestHelper helper) {
+        helper.assertTrue(ModList.get().isLoaded("ironfurnaces") == Boolean.getBoolean("furnacedistributor.tests.expectIron"),
+                "actual mod presence must match test run");
+        if (!ModList.get().isLoaded("ironfurnaces")) {
+            helper.assertTrue(VanillaGameTests.class.getClassLoader().getResource(
+                    "ironfurnaces/tileentity/furnaces/BlockIronFurnaceTileBase.class") == null,
+                    "Iron API classes must also be absent from the runtime classpath");
+        }
+        var a = furnace(helper, 0, Blocks.FURNACE);
+        var b = furnace(helper, 1, Blocks.FURNACE);
+        var c = furnace(helper, 2, Blocks.FURNACE);
+        ServerPlayer player = player(helper, new ItemStack(Items.COBBLESTONE, 128));
+        distribute(helper, player, 3);
+        helper.assertTrue(a.getItem(0).getCount() == 43 && b.getItem(0).getCount() == 43 && c.getItem(0).getCount() == 42
+                && player.getMainHandItem().isEmpty(), "case 1: vanilla 43/43/42");
+        helper.assertTrue(FurnaceArea.scan(helper.getLevel(), absolute(helper, 0), absolute(helper, 2)).positions().size() == 3,
+                "vanilla detection");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void blastSmokerAndInvalidRecipes(GameTestHelper helper) {
+        var a = furnace(helper, 0, Blocks.FURNACE);
+        var b = furnace(helper, 1, Blocks.BLAST_FURNACE);
+        var c = furnace(helper, 2, Blocks.SMOKER);
+        ServerPlayer player = player(helper, new ItemStack(Items.RAW_IRON, 64));
+        distribute(helper, player, 3);
+        helper.assertTrue(a.getItem(0).getCount() == 32 && b.getItem(0).getCount() == 32 && c.getItem(0).isEmpty(), "blast recipe");
+        a.clearContent(); b.clearContent();
+        player.getInventory().items.set(0, new ItemStack(Items.BEEF, 64));
+        distribute(helper, player, 3);
+        helper.assertTrue(a.getItem(0).getCount() == 32 && c.getItem(0).getCount() == 32 && b.getItem(0).isEmpty(), "smoking recipe");
+        a.clearContent(); c.clearContent();
+        player.getInventory().items.set(0, new ItemStack(Items.DIAMOND, 64));
+        distribute(helper, player, 3);
+        helper.assertTrue(a.isEmpty() && b.isEmpty() && c.isEmpty() && player.getMainHandItem().getCount() == 64, "invalid recipe");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void partialFullComponentsAndFuel(GameTestHelper helper) {
+        var a = furnace(helper, 0, Blocks.FURNACE);
+        var b = furnace(helper, 1, Blocks.FURNACE);
+        var c = furnace(helper, 2, Blocks.FURNACE);
+        a.setItem(0, new ItemStack(Items.COBBLESTONE, 32));
+        b.setItem(0, new ItemStack(Items.COBBLESTONE, 64));
+        c.setItem(0, new ItemStack(Items.IRON_ORE, 1));
+        ServerPlayer player = player(helper, new ItemStack(Items.COBBLESTONE, 64));
+        distribute(helper, player, 3);
+        helper.assertTrue(a.getItem(0).getCount() == 64 && player.getMainHandItem().getCount() == 32
+                && c.getItem(0).is(Items.IRON_ORE), "partial/full/incompatible inputs");
+        ItemStack named = new ItemStack(Items.COBBLESTONE, 8);
+        named.set(DataComponents.CUSTOM_NAME, Component.literal("preserved"));
+        a.clearContent(); b.clearContent();
+        player.getInventory().items.set(0, named);
+        distribute(helper, player, 3);
+        helper.assertTrue(a.getItem(0).getCount() == 4 && b.getItem(0).getCount() == 4
+                && a.getItem(0).has(DataComponents.CUSTOM_NAME), "component copies");
+        a.getItem(0).shrink(1);
+        helper.assertTrue(b.getItem(0).getCount() == 4, "independent mutable stacks");
+        player.getInventory().items.set(0, new ItemStack(Items.COAL, 12));
+        distribute(helper, player, 3);
+        helper.assertTrue(a.getItem(1).getCount() == 4 && b.getItem(1).getCount() == 4 && c.getItem(1).getCount() == 4, "fuel priority");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void collectionFullPartialAndXp(GameTestHelper helper) {
+        var furnace = furnace(helper, 0, Blocks.FURNACE);
+        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+                new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
+        furnace.setRecipeUsed(recipe);
+        furnace.setItem(2, new ItemStack(Items.IRON_INGOT, 10));
+        ServerPlayer player = player(helper, ItemStack.EMPTY);
+        for (int i = 0; i < player.getInventory().items.size(); i++) player.getInventory().items.set(i, new ItemStack(Items.STONE, 64));
+        collect(helper, player, 1);
+        helper.assertTrue(furnace.getItem(2).getCount() == 10 && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "full: no loss or XP");
+        player.getInventory().items.set(1, new ItemStack(Items.IRON_INGOT, 60));
+        collect(helper, player, 1);
+        helper.assertTrue(furnace.getItem(2).getCount() == 6 && player.getInventory().items.get(1).getCount() == 64, "partial output");
+        helper.assertTrue(!helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "vanilla XP delivered");
+        int orbs = helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).size();
+        player.getInventory().items.set(1, ItemStack.EMPTY);
+        collect(helper, player, 1);
+        collect(helper, player, 1);
+        helper.assertTrue(furnace.getItem(2).isEmpty() && player.getInventory().items.get(1).getCount() == 6
+                && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).size() == orbs, "repeat: no item or XP duplication");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void rangeAndAccess(GameTestHelper helper) {
+        var furnace = furnace(helper, 0, Blocks.FURNACE);
+        ServerPlayer player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
+        var pos = absolute(helper, 0);
+        player.setPos(pos.getX() + 100, pos.getY(), pos.getZ());
+        distribute(helper, player, 1);
+        helper.assertTrue(furnace.isEmpty() && player.getMainHandItem().getCount() == 16, "distance rejection");
+        player.setPos(pos.getX(), pos.getY(), pos.getZ());
+        player.containerMenu = new net.minecraft.world.inventory.ChestMenu(net.minecraft.world.inventory.MenuType.GENERIC_9x1,
+                1, player.getInventory(), new net.minecraft.world.SimpleContainer(9), 1);
+        distribute(helper, player, 1);
+        helper.assertTrue(furnace.isEmpty(), "active menu prevents conflicting operation");
+        player.containerMenu = player.inventoryMenu;
+        furnace.setRemoved();
+        helper.assertTrue(FurnaceAccessRegistry.find(furnace) == null, "removed entity rejected");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void unloadedChunksAndVanillaLock(GameTestHelper helper) {
+        var furnace = furnace(helper, 0, Blocks.FURNACE);
+        ServerPlayer player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
+        var far = absolute(helper, 0).offset(10000, 0, 10000);
+        helper.assertFalse(helper.getLevel().hasChunk(far.getX() >> 4, far.getZ() >> 4), "test chunk initially unloaded");
+        var scan = FurnaceArea.scan(helper.getLevel(), far, far);
+        helper.assertTrue(!scan.valid() && "area_unloaded".equals(scan.error())
+                && !helper.getLevel().hasChunk(far.getX() >> 4, far.getZ() >> 4), "scan never loads a chunk");
+        var tag = new net.minecraft.nbt.CompoundTag();
+        tag.putString("Lock", "key required");
+        furnace.loadWithComponents(tag, helper.getLevel().registryAccess());
+        distribute(helper, player, 1);
+        helper.assertTrue(furnace.getItem(0).isEmpty() && player.getMainHandItem().getCount() == 16, "vanilla lock respected");
+        helper.succeed();
+    }
+}

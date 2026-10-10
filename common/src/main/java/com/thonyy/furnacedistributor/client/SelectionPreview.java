@@ -9,7 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.block.AbstractFurnaceBlock;
+import com.thonyy.furnacedistributor.furnace.FurnaceAccessRegistry;
 
 /** World-position preview only: server inventories and permissions remain authoritative. */
 public final class SelectionPreview {
@@ -24,7 +24,7 @@ public final class SelectionPreview {
                 && !minecraft.level.isOutsideBuildHeight(pos)
                 && minecraft.level.getWorldBorder().isWithinBounds(pos)
                 && minecraft.level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)
-                && minecraft.level.getBlockState(pos).getBlock() instanceof AbstractFurnaceBlock;
+                && FurnaceAccessRegistry.isFurnace(minecraft.level, pos);
     }
 
     public static FurnaceArea.Scan get(Minecraft minecraft, BlockPos pos1, BlockPos pos2) {

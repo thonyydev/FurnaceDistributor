@@ -2,7 +2,7 @@ package com.thonyy.furnacedistributor.logic;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.AbstractFurnaceBlock;
+import com.thonyy.furnacedistributor.furnace.FurnaceAccessRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +38,7 @@ public final class FurnaceArea {
         List<BlockPos> furnaces = new ArrayList<>();
         for (BlockPos pos : BlockPos.betweenClosed(area.minX(), area.minY(), area.minZ(),
                 area.maxX(), area.maxY(), area.maxZ())) {
-            if (level.getBlockState(pos).getBlock() instanceof AbstractFurnaceBlock) {
+            if (FurnaceAccessRegistry.isFurnace(level, pos)) {
                 if (furnaces.size() == AreaBounds.MAX_FURNACES) {
                     return new Scan(List.of(), "too_many_furnaces");
                 }

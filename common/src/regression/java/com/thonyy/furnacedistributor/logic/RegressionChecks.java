@@ -41,6 +41,7 @@ public final class RegressionChecks {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
         inventory();
+        checks += FurnaceTransferChecks.run();
         packets();
         collectionArea();
         feedback();

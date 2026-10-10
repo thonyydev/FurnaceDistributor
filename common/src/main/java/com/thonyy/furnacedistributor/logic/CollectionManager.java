@@ -3,12 +3,11 @@ package com.thonyy.furnacedistributor.logic;
 import com.thonyy.furnacedistributor.feedback.PlayerFeedback;
 
 import com.thonyy.furnacedistributor.config.ServerConfig;
+import com.thonyy.furnacedistributor.furnace.FurnaceTarget;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
 import java.util.List;
 
@@ -19,7 +18,7 @@ public final class CollectionManager {
             BlockPos pos1,
             BlockPos pos2
     ) {
-        List<AbstractFurnaceBlockEntity> furnaces =
+        List<FurnaceTarget> furnaces =
                 OperationGuard.find(player, pos1, pos2);
 
         if (furnaces == null) return;
@@ -37,51 +36,16 @@ public final class CollectionManager {
         int furnacesWithItems = 0;
         boolean hasRemainingItems = false;
 
-        for (AbstractFurnaceBlockEntity furnace : furnaces) {
-
-            ItemStack output = furnace.getItem(2);
-
-            if (output.isEmpty()) {
-                continue;
-            }
-
-            int originalCount = output.getCount();
-
-            ItemStack remaining = output.copy();
-
-            InventoryTransfer.insert(player.getInventory(), remaining);
-
-            if (!remaining.isEmpty()) {
-                hasRemainingItems = true;
-            }
-
-            int collected =
-                    originalCount - remaining.getCount();
-
-            if (collected <= 0) {
-                continue;
-            }
-
-            totalCollected += collected;
+        for (FurnaceTarget furnace : furnaces) {
+            FurnaceTransfer.Collected result = FurnaceTransfer.collect(furnace, player.getInventory());
+            hasRemainingItems |= result.remaining();
+            if (result.count() <= 0) continue;
+            totalCollected += result.count();
             furnacesWithItems++;
-
-            if (remaining.isEmpty()) {
-                furnace.setItem(
-                        2,
-                        ItemStack.EMPTY
-                );
-            } else {
-                furnace.setItem(
-                        2,
-                        remaining
-                );
-            }
-
-            furnace.setChanged();
             if (ServerConfig.get().collectExperience) {
-                // Vanilla clears the recipe ledger, including after a partial extraction.
-                furnace.awardUsedRecipesAndPopExperience(player);
-                furnace.setChanged();
+                // One ledger per furnace, shared by all processes; clear it only after a real extraction.
+                furnace.access().awardExperience(furnace.entity(), player);
+                furnace.entity().setChanged();
             }
         }
 

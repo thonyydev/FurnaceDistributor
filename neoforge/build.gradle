@@ -4,6 +4,11 @@ plugins {
 
 repositories {
     maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+    maven {
         name = 'NeoForge'
         url = 'https://maven.neoforged.net/releases/'
     }
@@ -37,6 +42,12 @@ dependencies {
 
     // Architectury API for NeoForge.
     modImplementation "dev.architectury:architectury-neoforge:$rootProject.architectury_api_version"
+
+    // Optional integration; never bundled and never present in common/Fabric's classpaths.
+    modCompileOnly('maven.modrinth:iron-furnaces:WZ25JeYB') { transitive = false }
+    if (providers.gradleProperty('withIronFurnaces').getOrElse('false').toBoolean()) {
+        modLocalRuntime('maven.modrinth:iron-furnaces:WZ25JeYB') { transitive = false }
+    }
 
     common(project(path: ':common', configuration: 'namedElements')) {
         transitive = false
@@ -81,4 +92,32 @@ shadowJar {
 
 remapJar {
     inputFile.set shadowJar.archiveFile
+}
+
+// Isolated test mod: never included in the production jar or normal development runs.
+if (providers.gradleProperty('integrationTests').getOrElse('false').toBoolean()) {
+    sourceSets {
+        integrationTest {
+            compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+            runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+        }
+    }
+    loom {
+        mods {
+            furnacedistributor { sourceSet sourceSets.main; sourceSet 'main', ':common' }
+            furnacedistributor_tests { sourceSet sourceSets.integrationTest }
+        }
+        runs {
+            integrationTest {
+                server()
+                forgeTemplate 'server'
+                source sourceSets.integrationTest
+                runDir 'build/integration-run'
+                property 'neoforge.enabledGameTestNamespaces', 'furnacedistributor_tests'
+                property 'neoforge.enableGameTest', 'true'
+                property 'neoforge.gameTestServer', 'true'
+                property 'furnacedistributor.tests.expectIron', providers.gradleProperty('withIronFurnaces').getOrElse('false')
+            }
+        }
+    }
 }

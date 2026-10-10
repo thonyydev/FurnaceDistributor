@@ -34,3 +34,6 @@ Thumbs.db
 
 # Gradle local
 gradle.properties.local
+
+#Tools 
+tools/

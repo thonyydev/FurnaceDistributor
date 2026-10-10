@@ -6,7 +6,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
@@ -63,12 +62,7 @@ public final class FurnaceSelectionHandler {
         BlockPos pos =
                 ((BlockHitResult) hitResult).getBlockPos();
 
-        if (
-                !(mc.level
-                        .getBlockState(pos)
-                        .getBlock()
-                        instanceof AbstractFurnaceBlock)
-        ) {
+        if (!SelectionPreview.isSupportedFurnace(mc, pos)) {
             PlayerFeedback.actionBar(mc.player, Component.translatable(
                                     "message.furnacedistributor.invalid_block"
                             )

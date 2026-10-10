@@ -9,7 +9,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
+import com.thonyy.furnacedistributor.furnace.FurnaceAccessRegistry;
+import com.thonyy.furnacedistributor.furnace.FurnaceTarget;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,7 +28,7 @@ public final class OperationGuard {
     }
 
     /** null means rejected; all validation finishes before any inventory changes. Called on the server thread. */
-    public static List<AbstractFurnaceBlockEntity> find(ServerPlayer player, BlockPos first, BlockPos second) {
+    public static List<FurnaceTarget> find(ServerPlayer player, BlockPos first, BlockPos second) {
         if (!player.isAlive() || player.isSpectator() || player.hasDisconnected()
                 || player.containerMenu != player.inventoryMenu) return null;
         long now = player.serverLevel().getGameTime();
@@ -50,14 +51,15 @@ public final class OperationGuard {
             error(player, scan.error(), AreaBounds.MAX_FURNACES);
             return null;
         }
-        List<AbstractFurnaceBlockEntity> furnaces = new ArrayList<>();
+        List<FurnaceTarget> furnaces = new ArrayList<>();
         for (BlockPos pos : scan.positions()) {
-            if (player.level().getBlockEntity(pos) instanceof AbstractFurnaceBlockEntity furnace) {
+            FurnaceTarget furnace = FurnaceAccessRegistry.find(player.level().getBlockEntity(pos));
+            if (furnace != null) {
                 if (!player.level().mayInteract(player, pos)) {
                     error(player, "area_protected");
                     return null;
                 }
-                if (!furnace.canOpen(player)) return null;
+                if (!furnace.access().canAccess(furnace.entity(), player)) return null;
                 furnaces.add(furnace);
             }
         }
