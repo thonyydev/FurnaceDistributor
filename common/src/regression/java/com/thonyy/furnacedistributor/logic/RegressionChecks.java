@@ -55,6 +55,8 @@ public final class RegressionChecks {
         inventory();
         checks += FurnaceTransferChecks.run();
         packets();
+        checks += BulkChecks.run();
+        checks += com.thonyy.furnacedistributor.client.BulkUiChecks.run(Path.of(arguments[0]));
         collectionArea();
         feedback();
         distributionFeedback(Path.of(arguments[0]));
@@ -198,7 +200,15 @@ public final class RegressionChecks {
             ServerConfig old = file.load(ServerConfig::new);
             check(old.maxDistance == 8 && old.requestCooldownTicks == 100 && old.smartDistribution && old.collectExperience,
                     "clamping and missing fields");
+            check(old.enableBulkDistribution && old.maxBulkSlots == 36, "old server configs enable bulk with a bounded slot budget");
+            old.enableBulkDistribution = false;
+            old.maxBulkSlots = 1000;
             check(file.save(old), "save validated config");
+            ServerConfig reloaded = file.load(ServerConfig::new);
+            check(!reloaded.enableBulkDistribution && reloaded.maxBulkSlots == 36, "bulk server settings survive restart and clamp upper bound");
+            reloaded.maxBulkSlots = -1;
+            reloaded.validate();
+            check(reloaded.maxBulkSlots == 1, "bulk server slot lower bound");
             check(JsonParser.parseString(Files.readString(path)).getAsJsonObject().get("futureOption").getAsInt() == 123,
                     "preserve unknown fields");
             String broken = "{broken json";
@@ -299,7 +309,7 @@ public final class RegressionChecks {
             }
         }
         // Literal keys in client/server source must exist; dynamic error/option keys are checked below.
-        Pattern literal = Pattern.compile("\"((?:message|key|hud|config)\\.furnacedistributor\\.[a-z_]+)\"");
+        Pattern literal = Pattern.compile("\"((?:message|key|hud|config|bulk)\\.furnacedistributor\\.[a-z_]+)\"");
         try (var paths = Files.walk(root.resolve("common/src/main/java"))) {
             for (Path path : paths.filter(value -> value.toString().endsWith(".java")).toList()) {
                 var matcher = literal.matcher(Files.readString(path));
@@ -307,7 +317,8 @@ public final class RegressionChecks {
             }
         }
         for (String key : new String[]{"area_too_large", "area_too_far", "area_outside_world", "area_unloaded",
-                "area_protected", "too_many_furnaces", "no_item", "no_furnaces", "no_capacity", "invalid_item", "not_enough_items"}) {
+                "area_protected", "too_many_furnaces", "no_item", "no_furnaces", "no_capacity", "invalid_item", "not_enough_items",
+                "bulk_disabled", "bulk_invalid_slots", "bulk_empty"}) {
             check(english.has("message.furnacedistributor." + key), "dynamic error " + key);
         }
         for (String key : new String[]{"outlines", "preview", "hud", "tips", "animations"}) {

@@ -20,7 +20,7 @@ import java.util.List;
 public final class UiAnimationChecks {
     private static int checks;
     private static int wraps;
-    private static final Font FONT = new Font(new Font.Provider() {
+    static final Font FONT = new Font(new Font.Provider() {
         @Override public net.minecraft.client.gui.GlyphSource glyphs(net.minecraft.network.chat.FontDescription description) { return null; }
         @Override public net.minecraft.client.gui.font.glyphs.EffectGlyph effect() { return null; }
     }) {

@@ -7,6 +7,9 @@ import net.fabricmc.api.Environment;
 public final class ModNetworking {
 
     public static void register() {
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, BulkDistributePacket.TYPE,
+                BulkDistributePacket.STREAM_CODEC, (packet, context) -> context.queue(() ->
+                        BulkDistributePacket.handle(packet, context)));
         NetworkManager.registerReceiver(
                 NetworkManager.Side.C2S,
                 DistributePacket.TYPE,
@@ -24,6 +27,11 @@ public final class ModNetworking {
                         CollectPacket.handle(packet, context)
                 )
         );
+    }
+
+    @Environment(EnvType.CLIENT)
+    public static void sendBulk(BulkDistributePacket packet) {
+        NetworkManager.sendToServer(packet);
     }
 
     @Environment(EnvType.CLIENT)

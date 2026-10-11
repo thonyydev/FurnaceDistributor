@@ -27,6 +27,8 @@ public class VanillaGameTests {
         ServerConfig.get().smartDistribution = true;
         ServerConfig.get().allowPartialDistribution = false;
         ServerConfig.get().collectExperience = true;
+        ServerConfig.get().enableBulkDistribution = true;
+        ServerConfig.get().maxBulkSlots = 36;
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         BlockPos pos = helper.absolutePos(FIRST);
         player.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
@@ -353,7 +355,7 @@ public class VanillaGameTests {
         return (net.minecraft.network.chat.contents.TranslatableContents) component.getContents();
     }
 
-    private static Component lastFeedback(ServerPlayer player) {
+    static Component lastFeedback(ServerPlayer player) {
         // Inspect the existing throttle snapshot; the headless mock player has no HUD to draw.
         try {
             var recent = com.thonyy.furnacedistributor.feedback.PlayerFeedback.class.getDeclaredField("RECENT");

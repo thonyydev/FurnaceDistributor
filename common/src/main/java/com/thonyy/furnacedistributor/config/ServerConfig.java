@@ -9,6 +9,8 @@ public final class ServerConfig {
     public boolean smartDistribution = true;
     public boolean allowPartialDistribution = false;
     public boolean collectExperience = true;
+    public boolean enableBulkDistribution = true;
+    public int maxBulkSlots = 36;
 
     public static void load() {
         instance = new ConfigFile<>(Platform.getConfigFolder().resolve("furnacedistributor-server.json"),
@@ -18,6 +20,7 @@ public final class ServerConfig {
     public void validate() {
         maxDistance = Math.clamp(maxDistance, 8, 128);
         requestCooldownTicks = Math.clamp(requestCooldownTicks, 0, 100);
+        maxBulkSlots = Math.clamp(maxBulkSlots, 1, 36);
     }
 
     public static ServerConfig get() { return instance; }

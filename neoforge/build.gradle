@@ -122,4 +122,6 @@ if (providers.gradleProperty('integrationTests').getOrElse('false').toBoolean())
             }
         }
     }
+    // The runtime includes common's dev jar as well as its classes; keep both at the same revision.
+    tasks.named('runIntegrationTest') { dependsOn ':common:jar' }
 }

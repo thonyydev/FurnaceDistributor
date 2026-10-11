@@ -63,6 +63,13 @@ public final class ClientEvents {
             return;
         }
 
+        if (consumeClicks(KeyBindings.BULK_KEY)) {
+            drainKeys();
+            // B is also vanilla's debug hitbox shortcut when its debug modifier (normally F3) is held.
+            if (!minecraft.options.keyDebugModifier.isDown()) BulkDistributionScreen.open(minecraft);
+            return;
+        }
+
         if (consumeClicks(KeyBindings.DISTRIBUTE_KEY)) {
             FurnaceSelectionHandler.handleSelection();
         }
@@ -77,6 +84,7 @@ public final class ClientEvents {
         consumeClicks(KeyBindings.COLLECT_KEY);
         consumeClicks(KeyBindings.CANCEL_KEY);
         consumeClicks(KeyBindings.SETTINGS_KEY);
+        consumeClicks(KeyBindings.BULK_KEY);
     }
 
     private static boolean consumeClicks(KeyMapping key) {
