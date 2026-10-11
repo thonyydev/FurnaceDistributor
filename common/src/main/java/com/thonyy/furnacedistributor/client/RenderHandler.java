@@ -1,556 +1,114 @@
 package com.thonyy.furnacedistributor.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.thonyy.furnacedistributor.logic.FurnaceArea;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.ItemRenderer;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix4f;
+import net.minecraft.world.phys.shapes.Shapes;
+import org.joml.Quaternionf;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 public final class RenderHandler {
+    private record Outline(AABB box, int color) { }
+    private record Frame(Vec3 camera, Quaternionf rotation, List<Outline> outlines,
+                         List<BlockPos> furnaces, ItemStackRenderState item, float bobbing) { }
+    private static final Map<LevelRenderState, Frame> FRAMES = java.util.Collections.synchronizedMap(new WeakHashMap<>());
 
-    public static void render(
-            PoseStack poseStack,
-            Camera camera
-    ) {
+    /** Read live world/player data only during extraction; submissions use the captured frame. */
+    public static void extract(Camera camera, LevelRenderState levelState) {
         Minecraft mc = Minecraft.getInstance();
-
-        if (mc.level == null || mc.player == null || mc.options.hideGui || mc.screen != null
-                || !mc.player.isAlive() || mc.player.isSpectator()) {
-            return;
-        }
-
+        FRAMES.remove(levelState);
+        if (mc.level == null || mc.player == null || mc.gui.hud.isHidden() || mc.gui.screen() != null
+                || !mc.player.isAlive() || mc.player.isSpectator()) return;
         if (FurnaceSelectionHandler.getFirstPos() == null && Collector.getFirstCollectPos() == null) return;
-
-        MultiBufferSource.BufferSource bufferSource =
-                mc.renderBuffers().bufferSource();
-
-        Vec3 cameraPosition = camera.getPosition();
-
-        poseStack.pushPose();
-
-        poseStack.translate(
-                -cameraPosition.x,
-                -cameraPosition.y,
-                -cameraPosition.z
-        );
-
-        renderDistributionMode(
-                mc,
-                poseStack,
-                bufferSource
-        );
-
-        renderCollectionMode(
-                mc,
-                poseStack,
-                bufferSource
-        );
-
-        poseStack.popPose();
-
-        /*
-         * Desenha os buffers utilizados pelo nosso render.
-         */
-        bufferSource.endBatch();
-    }
-
-    private static void renderDistributionMode(
-            Minecraft mc,
-            PoseStack poseStack,
-            MultiBufferSource.BufferSource bufferSource
-    ) {
-        BlockPos firstPos =
-                FurnaceSelectionHandler.getFirstPos();
-
-        BlockPos secondPos =
-                FurnaceSelectionHandler.getSecondPos();
-
-        if (firstPos == null && secondPos == null) {
-            return;
-        }
-
-        /*
-         * Primeira fornalha selecionada.
-         * Verde.
-         */
-        if (firstPos != null) {
-            renderBlockOutline(
-                    poseStack,
-                    bufferSource,
-                    firstPos,
-                    0.0f,
-                    1.0f,
-                    0.0f,
-                    0.8f
-            );
-        }
-
-        /*
-         * Enquanto o jogador está escolhendo a
-         * segunda posição:
-         *
-         * - área amarela
-         * - outline amarelo
-         * - preview dos itens
-         */
-        if (
-                FurnaceSelectionHandler.isInSelectionMode()
-                        && firstPos != null
-                        && secondPos == null
-        ) {
-            BlockPos lookingAt =
-                    FurnaceSelectionHandler.getLookingAtPos(mc);
-
-            if (
-                    SelectionPreview.isSupportedFurnace(mc, lookingAt)
-            ) {
-                renderArea(
-                        poseStack,
-                        bufferSource,
-                        firstPos,
-                        lookingAt,
-                        1.0f,
-                        1.0f,
-                        0.0f,
-                        0.5f,
-                        0.01
-                );
-
-                renderBlockOutline(
-                        poseStack,
-                        bufferSource,
-                        lookingAt,
-                        1.0f,
-                        1.0f,
-                        0.0f,
-                        1.0f
-                );
-
-                renderItemsOnFurnaces(
-                        mc,
-                        poseStack,
-                        bufferSource,
-                        firstPos,
-                        lookingAt
-                );
+        List<Outline> outlines = new ArrayList<>();
+        BlockPos first = FurnaceSelectionHandler.getFirstPos();
+        BlockPos second = FurnaceSelectionHandler.getSecondPos();
+        BlockPos preview = FurnaceSelectionHandler.isInSelectionMode()
+                ? FurnaceSelectionHandler.getLookingAtPos(mc) : null;
+        if (!SelectionPreview.isSupportedFurnace(mc, preview)) preview = null;
+        if (first != null) {
+            block(outlines, first, 0xCC00FF00);
+            if (second != null) {
+                area(outlines, first, second, 0xCC0080FF, 0.02);
+                block(outlines, second, 0xCC00FFFF);
+            } else if (preview != null) {
+                area(outlines, first, preview, 0x80FFFF00, 0.01);
+                block(outlines, preview, 0xFFFFFF00);
             }
         }
-
-        /*
-         * Seleção final confirmada.
-         * Azul.
-         */
-        if (firstPos != null && secondPos != null) {
-            renderArea(
-                    poseStack,
-                    bufferSource,
-                    firstPos,
-                    secondPos,
-                    0.0f,
-                    0.5f,
-                    1.0f,
-                    0.8f,
-                    0.02
-            );
-
-            renderBlockOutline(
-                    poseStack,
-                    bufferSource,
-                    secondPos,
-                    0.0f,
-                    1.0f,
-                    1.0f,
-                    0.8f
-            );
-        }
-    }
-
-    private static void renderCollectionMode(
-            Minecraft mc,
-            PoseStack poseStack,
-            MultiBufferSource.BufferSource bufferSource
-    ) {
-        BlockPos firstPos =
-                Collector.getFirstCollectPos();
-
-        BlockPos secondPos =
-                Collector.getSecondCollectPos();
-
-        if (firstPos == null && secondPos == null) {
-            return;
-        }
-
-        /*
-         * Primeira posição da coleta.
-         */
-        if (firstPos != null) {
-            renderBlockOutline(
-                    poseStack,
-                    bufferSource,
-                    firstPos,
-                    0.7f,
-                    0.2f,
-                    1.0f,
-                    0.8f
-            );
-        }
-
-        /*
-         * Preview enquanto escolhe a segunda posição.
-         */
-        if (
-                Collector.isInCollectionMode()
-                        && firstPos != null
-                        && secondPos == null
-        ) {
-            BlockPos lookingAt =
-                    FurnaceSelectionHandler.getLookingAtPos(mc);
-
-            if (
-                    SelectionPreview.isSupportedFurnace(mc, lookingAt)
-            ) {
-                var scan = SelectionPreview.get(mc, firstPos, lookingAt);
-                if (!scan.valid()) return;
-                renderArea(
-                        poseStack,
-                        bufferSource,
-                        firstPos,
-                        lookingAt,
-                        0.7f,
-                        0.2f,
-                        1.0f,
-                        0.5f,
-                        0.01
-                );
-
-                renderBlockOutline(
-                        poseStack,
-                        bufferSource,
-                        lookingAt,
-                        0.9f,
-                        0.4f,
-                        1.0f,
-                        1.0f
-                );
-
-                if (ClientConfig.get().showOutlines) {
-                    for (BlockPos furnace : scan.positions()) {
-                        if (!furnace.equals(firstPos) && !furnace.equals(lookingAt)) {
-                            renderBlockOutline(poseStack, bufferSource, furnace, 0.7f, 0.2f, 1.0f, 0.6f);
-                        }
-                    }
-                }
+        BlockPos collectFirst = Collector.getFirstCollectPos();
+        BlockPos collectSecond = Collector.getSecondCollectPos();
+        if (collectFirst != null) {
+            block(outlines, collectFirst, 0xCCB233FF);
+            if (collectSecond == null && Collector.isInCollectionMode()) {
+                BlockPos target = FurnaceSelectionHandler.getLookingAtPos(mc);
+                if (SelectionPreview.isSupportedFurnace(mc, target)) collectSecond = target;
+            }
+            if (collectSecond != null) {
+                area(outlines, collectFirst, collectSecond, 0xCCB233FF, 0.02);
+                block(outlines, collectSecond, 0xCCE566FF);
             }
         }
+        List<BlockPos> furnaces = first != null && second == null && preview != null
+                && ClientConfig.get().showItemPreview && !mc.player.getMainHandItem().isEmpty()
+                ? SelectionPreview.get(mc, first, preview).positions() : List.of();
+        ItemStackRenderState item = new ItemStackRenderState();
+        if (!furnaces.isEmpty()) mc.getItemModelResolver().updateForTopItem(item, mc.player.getMainHandItem(),
+                ItemDisplayContext.GROUND, mc.level, mc.player, 0);
+        float bobbing = (float) Math.sin((System.currentTimeMillis() % 3000L) / 3000.0 * Math.PI * 2) * 0.1f;
+        FRAMES.put(levelState, new Frame(camera.position(), new Quaternionf(camera.rotation()), List.copyOf(outlines), furnaces, item, bobbing));
+    }
 
-        /*
-         * Área final confirmada.
-         */
-        if (firstPos != null && secondPos != null) {
-            renderArea(
-                    poseStack,
-                    bufferSource,
-                    firstPos,
-                    secondPos,
-                    0.7f,
-                    0.2f,
-                    1.0f,
-                    0.8f,
-                    0.02
-            );
-
-            renderBlockOutline(
-                    poseStack,
-                    bufferSource,
-                    secondPos,
-                    0.9f,
-                    0.4f,
-                    1.0f,
-                    0.8f
-            );
+    public static void submit(LevelRenderState levelState, SubmitNodeCollector collector) {
+        Frame captured = FRAMES.get(levelState);
+        if (captured == null) return;
+        PoseStack pose = new PoseStack();
+        pose.translate(-captured.camera.x, -captured.camera.y, -captured.camera.z);
+        for (Outline outline : captured.outlines) {
+            collector.submitShapeOutline(pose, Shapes.create(outline.box), RenderTypes.lines(), outline.color, 1.0f, true);
+        }
+        for (BlockPos pos : captured.furnaces) {
+            Vec3 location = Vec3.atCenterOf(pos).add(0, 0.8 + captured.bobbing, 0);
+            pose.pushPose();
+            pose.translate(location.x, location.y, location.z);
+            pose.mulPose(captured.rotation);
+            pose.mulPose(Axis.YP.rotationDegrees(180));
+            pose.scale(0.5f, 0.5f, 0.5f);
+            captured.item.submit(pose, collector, 0xF000F0, OverlayTexture.NO_OVERLAY, 0);
+            pose.popPose();
         }
     }
 
-    private static void renderItemsOnFurnaces(
-            Minecraft mc,
-            PoseStack poseStack,
-            MultiBufferSource.BufferSource bufferSource,
-            BlockPos pos1,
-            BlockPos pos2
-    ) {
-        if (mc.player == null) {
-            return;
-        }
-
-        ItemStack heldItem =
-                mc.player.getMainHandItem();
-
-        if (heldItem.isEmpty() || !ClientConfig.get().showItemPreview) {
-            return;
-        }
-
-        List<BlockPos> furnaces = SelectionPreview.get(mc, pos1, pos2).positions();
-        if (furnaces.isEmpty()) return;
-
-        ItemRenderer itemRenderer =
-                mc.getItemRenderer();
-
-        Font font =
-                mc.font;
-
-        float time =
-                (System.currentTimeMillis() % 3000L)
-                        / 3000.0f;
-
-        float bobbing =
-                (float) Math.sin(
-                        time * Math.PI * 2.0
-                ) * 0.1f;
-
-        // Server inventories and distribution settings are not synchronized with this preview.
-        for (BlockPos furnacePos : furnaces) {
-            Vec3 itemPos =
-                    Vec3.atCenterOf(furnacePos)
-                            .add(
-                                    0,
-                                    0.8 + bobbing,
-                                    0
-                            );
-
-            /*
-             * Item flutuando.
-             */
-            poseStack.pushPose();
-
-            poseStack.translate(
-                    itemPos.x,
-                    itemPos.y,
-                    itemPos.z
-            );
-
-            poseStack.mulPose(
-                    mc.getEntityRenderDispatcher()
-                            .cameraOrientation()
-            );
-
-            poseStack.mulPose(
-                    Axis.YP.rotationDegrees(180.0f)
-            );
-
-            float scale = 0.5f;
-
-            poseStack.scale(
-                    scale,
-                    scale,
-                    scale
-            );
-
-            itemRenderer.renderStatic(
-                    heldItem,
-                    ItemDisplayContext.GROUND,
-                    15728880,
-                    OverlayTexture.NO_OVERLAY,
-                    poseStack,
-                    bufferSource,
-                    mc.level,
-                    0
-            );
-
-            poseStack.popPose();
-
-            /*
-             * Quantidade abaixo do item.
-             */
-            renderFloatingText(
-                    poseStack,
-                    bufferSource,
-                    font,
-                    "?",
-                    itemPos.add(
-                            0,
-                            -0.35,
-                            0
-                    ),
-                    mc
-            );
-        }
-    }
-
-    private static void renderFloatingText(
-            PoseStack poseStack,
-            MultiBufferSource.BufferSource bufferSource,
-            Font font,
-            String text,
-            Vec3 pos,
-            Minecraft mc
-    ) {
-        poseStack.pushPose();
-
-        poseStack.translate(
-                pos.x,
-                pos.y,
-                pos.z
-        );
-
-        poseStack.mulPose(
-                mc.getEntityRenderDispatcher()
-                        .cameraOrientation()
-        );
-
-        poseStack.mulPose(
-                Axis.YP.rotationDegrees(180.0f)
-        );
-
-        float scale = 0.02f;
-
-        poseStack.scale(
-                -scale,
-                -scale,
-                scale
-        );
-
-        Matrix4f matrix =
-                poseStack.last().pose();
-
-        Component textComponent =
-                Component.literal(text);
-
-        float textWidth =
-                font.width(textComponent);
-
-        float x =
-                -textWidth / 2.0f;
-
-        /*
-         * Fundo.
-         */
-        int backgroundColor =
-                0x40000000;
-
-        /*
-         * Texto.
-         */
-        font.drawInBatch(
-                textComponent,
-                x,
-                0,
-                0xFF55FF55,
-                false,
-                matrix,
-                bufferSource,
-                Font.DisplayMode.SEE_THROUGH,
-                backgroundColor,
-                15728880
-        );
-
-        poseStack.popPose();
-    }
-
-    private static void renderBlockOutline(
-            PoseStack poseStack,
-            MultiBufferSource.BufferSource bufferSource,
-            BlockPos pos,
-            float r,
-            float g,
-            float b,
-            float alpha
-    ) {
+    private static void block(List<Outline> outlines, BlockPos pos, int color) {
         if (!ClientConfig.get().showOutlines) return;
-        VertexConsumer consumer =
-                bufferSource.getBuffer(
-                        RenderType.lines()
-                );
-
-        /*
-         * Glow externo.
-         */
-        AABB glowBox =
-                new AABB(pos)
-                        .inflate(0.003);
-
-        LevelRenderer.renderLineBox(
-                poseStack,
-                consumer,
-                glowBox,
-                r,
-                g,
-                b,
-                alpha * 0.35f
-        );
-
-        /*
-         * Outline principal.
-         */
-        AABB mainBox =
-                new AABB(pos)
-                        .inflate(0.001);
-
-        LevelRenderer.renderLineBox(
-                poseStack,
-                consumer,
-                mainBox,
-                r,
-                g,
-                b,
-                alpha
-        );
+        outlines.add(new Outline(new AABB(pos).inflate(0.003), glow(color)));
+        outlines.add(new Outline(new AABB(pos).inflate(0.001), color));
     }
 
-    private static void renderArea(
-            PoseStack poseStack,
-            MultiBufferSource.BufferSource bufferSource,
-            BlockPos pos1,
-            BlockPos pos2,
-            float r,
-            float g,
-            float b,
-            float alpha,
-            double glowSize
-    ) {
+    private static void area(List<Outline> outlines, BlockPos first, BlockPos second, int color, double glowSize) {
         if (!ClientConfig.get().showOutlines) return;
-        var bounds = FurnaceArea.bounds(pos1, pos2);
-        AABB mainBox = new AABB(bounds.minX(), bounds.minY(), bounds.minZ(),
+        var bounds = FurnaceArea.bounds(first, second);
+        AABB box = new AABB(bounds.minX(), bounds.minY(), bounds.minZ(),
                 bounds.maxX() + 1.0, bounds.maxY() + 1.0, bounds.maxZ() + 1.0);
-        VertexConsumer consumer = bufferSource.getBuffer(RenderType.lines());
-        AABB glowBox = mainBox.inflate(glowSize);
-
-        LevelRenderer.renderLineBox(
-                poseStack,
-                consumer,
-                glowBox,
-                r,
-                g,
-                b,
-                alpha * 0.35f
-        );
-
-        LevelRenderer.renderLineBox(
-                poseStack,
-                consumer,
-                mainBox,
-                r,
-                g,
-                b,
-                alpha
-        );
+        outlines.add(new Outline(box.inflate(glowSize), glow(color)));
+        outlines.add(new Outline(box, color));
     }
 
-    private RenderHandler() {
-    }
+    private static int glow(int color) { return ((int) ((color >>> 24) * 0.35f) << 24) | (color & 0xFFFFFF); }
+    private RenderHandler() { }
 }

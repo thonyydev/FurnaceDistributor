@@ -1,5 +1,5 @@
 {
-  "key.categories.furnacedistributor": "Furnace Distributor",
+  "key.category.furnacedistributor.main": "Furnace Distributor",
   "key.furnacedistributor.distribute": "Distribuir objetos",
   "key.furnacedistributor.collect": "Recoger objetos",
   "message.furnacedistributor.look_at_furnace": "¡Debes mirar a un horno!",
@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "%s objetos siguen en tu mano porque algunos hornos no pudieron recibirlos.",
   "message.furnacedistributor.config_save_failed": "Los ajustes no se han guardado. Los cambios pueden perderse al reiniciar; consulta el registro.",
   "hud.furnacedistributor.select_second": "Selecciona el segundo horno con %s",
-  "hud.furnacedistributor.estimate": "%s hornos · %s objetos en la mano (cantidades determinadas por el servidor)",
+  "hud.furnacedistributor.estimate": "%s hornos · %s objetos en la mano",
   "hud.furnacedistributor.furnaces": "%s hornos en la zona",
   "hud.furnacedistributor.cancel": "%s: cancelar y borrar zona guardada",
   "hud.furnacedistributor.saved_area": "Zona guardada: %s + %s para distribuir, %s para recoger",

@@ -13,18 +13,16 @@ final class InventoryTransfer {
         int originalCount = remaining.getCount();
 
         // Completa pilhas existentes antes de ocupar novos slots.
-        for (ItemStack target : inventory.items) {
+        for (ItemStack target : inventory.getNonEquipmentItems()) {
             merge(inventory, target, remaining);
         }
 
         // Pode completar uma pilha na mão secundária, mas não a preenche vazia.
-        for (ItemStack target : inventory.offhand) {
-            merge(inventory, target, remaining);
-        }
+        merge(inventory, inventory.getItem(Inventory.SLOT_OFFHAND), remaining);
 
         // Apenas inventário principal e hotbar; nunca ocupa slots de armadura.
-        for (int slot = 0; slot < inventory.items.size() && !remaining.isEmpty(); slot++) {
-            if (!inventory.items.get(slot).isEmpty()) {
+        for (int slot = 0; slot < inventory.getNonEquipmentItems().size() && !remaining.isEmpty(); slot++) {
+            if (!inventory.getNonEquipmentItems().get(slot).isEmpty()) {
                 continue;
             }
 
@@ -39,7 +37,7 @@ final class InventoryTransfer {
 
             ItemStack inserted = remaining.copy();
             inserted.setCount(moved);
-            inventory.items.set(slot, inserted);
+            inventory.getNonEquipmentItems().set(slot, inserted);
             remaining.shrink(moved);
         }
 

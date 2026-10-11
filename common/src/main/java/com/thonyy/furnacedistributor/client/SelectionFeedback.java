@@ -13,7 +13,7 @@ public final class SelectionFeedback {
         clear();
         Minecraft minecraft = Minecraft.getInstance();
         // The HUD already describes selection states; avoid a second copy in the action bar.
-        if (minecraft.player != null && (!ClientConfig.get().showSelectionHud || minecraft.options.hideGui)) {
+        if (minecraft.player != null && (!ClientConfig.get().showSelectionHud || minecraft.gui.hud.isHidden())) {
             PlayerFeedback.actionBar(minecraft.player, message);
         }
     }

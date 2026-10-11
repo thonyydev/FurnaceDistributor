@@ -22,7 +22,7 @@ public final class FurnaceArea {
         if (!area.isWithinVolumeLimit()) {
             return new Scan(List.of(), "area_too_large");
         }
-        if (area.minY() < level.getMinBuildHeight() || area.maxY() >= level.getMaxBuildHeight()
+        if (area.minY() < level.getMinY() || area.maxY() >= level.getMaxY() + 1
                 || !level.getWorldBorder().isWithinBounds(new BlockPos(area.minX(), area.minY(), area.minZ()))
                 || !level.getWorldBorder().isWithinBounds(new BlockPos(area.maxX(), area.maxY(), area.maxZ()))) {
             return new Scan(List.of(), "area_outside_world");

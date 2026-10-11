@@ -6,10 +6,10 @@ dependencies {
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
     // which get remapped to the correct annotations on each platform.
     // Do NOT use other classes from Fabric Loader.
-    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+    implementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
 
-    // Architectury API. This is optional, and you can comment it out if you don't need it.
-    modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
+    // Shared multiloader APIs.
+    implementation "dev.architectury:architectury:$rootProject.architectury_api_version"
 }
 
 sourceSets {
@@ -27,7 +27,7 @@ tasks.register('regressionTest', JavaExec) {
     workingDir = layout.buildDirectory.dir('regression-run').get().asFile
     doFirst { workingDir.mkdirs() }
     javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
     args rootProject.projectDir.absolutePath
 }

@@ -7,8 +7,8 @@ import org.lwjgl.glfw.GLFW;
 
 public final class KeyBindings {
 
-    public static final String CATEGORY =
-            "key.categories.furnacedistributor";
+    public static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(
+            net.minecraft.resources.Identifier.fromNamespaceAndPath("furnacedistributor", "main"));
 
     public static final KeyMapping DISTRIBUTE_KEY =
             new KeyMapping(

@@ -46,12 +46,16 @@ public final class RegressionChecks {
         translations(Path.of(arguments[0]));
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
+        net.minecraft.core.registries.BuiltInRegistries.DATA_COMPONENT_INITIALIZERS
+                .build(net.minecraft.data.registries.VanillaRegistries.createLookup())
+                .forEach(net.minecraft.core.component.DataComponentInitializers.PendingComponents::apply);
         clientInputAndSelection();
         inventory();
         checks += FurnaceTransferChecks.run();
         packets();
         collectionArea();
         feedback();
+        renderSubmissions();
         System.out.println("Furnace Distributor: " + checks + " regression checks passed.");
     }
 
@@ -72,7 +76,7 @@ public final class RegressionChecks {
         // Exercise client state without launching Minecraft or exposing test-only public methods.
         var consume = ClientEvents.class.getDeclaredMethod("consumeClicks", KeyMapping.class);
         consume.setAccessible(true);
-        var key = new KeyMapping("regression.clicks", InputConstants.Type.MOUSE, 7, KeyMapping.CATEGORY_MISC);
+        var key = new KeyMapping("regression.clicks", InputConstants.Type.MOUSE, 7, KeyMapping.Category.MISC);
         check(!(boolean) consume.invoke(null, key), "empty key queue does nothing");
         for (int clicks : new int[]{1, 2, 20}) {
             for (int i = 0; i < clicks; i++) KeyMapping.click(key.getDefaultKey());
@@ -229,6 +233,10 @@ public final class RegressionChecks {
             for (Path file : files.filter(path -> path.toString().endsWith(".json")).sorted().toList()) {
                 JsonObject translated = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
                 check(english.keySet().equals(translated.keySet()), "translation key parity " + file.getFileName());
+                String hud = translated.get("hud.furnacedistributor.estimate").getAsString();
+                check(!hud.matches(".*[（(][^()（）]*[)）]\\s*$"), "HUD has no trailing quantity note " + file.getFileName());
+                String counts = String.format(hud, 24, 64);
+                check(counts.contains("24") && counts.contains("64"), "HUD preserves both counts " + file.getFileName());
                 for (String key : english.keySet()) {
                     String label = file.getFileName() + ": " + key;
                     check(translated.get(key).isJsonPrimitive() && translated.get(key).getAsJsonPrimitive().isString(),
@@ -267,46 +275,46 @@ public final class RegressionChecks {
     }
 
     private static void inventory() {
-        Inventory inventory = new Inventory(null);
+        Inventory inventory = new Inventory(null, new net.minecraft.world.entity.EntityEquipment());
         ItemStack emptyInventoryOutput = new ItemStack(Items.IRON_INGOT, 32);
         InventoryTransfer.insert(inventory, emptyInventoryOutput);
-        check(emptyInventoryOutput.isEmpty() && inventory.items.get(0).getCount() == 32, "empty inventory collection");
+        check(emptyInventoryOutput.isEmpty() && inventory.getNonEquipmentItems().get(0).getCount() == 32, "empty inventory collection");
         InventoryTransfer.insert(inventory, ItemStack.EMPTY);
-        check(inventory.items.get(0).getCount() == 32 && inventory.items.get(1).isEmpty(), "empty furnace output changes nothing");
-        inventory = new Inventory(null);
-        inventory.items.set(0, new ItemStack(Items.IRON_INGOT, 60));
+        check(inventory.getNonEquipmentItems().get(0).getCount() == 32 && inventory.getNonEquipmentItems().get(1).isEmpty(), "empty furnace output changes nothing");
+        inventory = new Inventory(null, new net.minecraft.world.entity.EntityEquipment());
+        inventory.getNonEquipmentItems().set(0, new ItemStack(Items.IRON_INGOT, 60));
         ItemStack remaining = new ItemStack(Items.IRON_INGOT, 10);
         InventoryTransfer.insert(inventory, remaining);
-        check(remaining.isEmpty() && inventory.items.get(0).getCount() == 64 && inventory.items.get(1).getCount() == 6,
+        check(remaining.isEmpty() && inventory.getNonEquipmentItems().get(0).getCount() == 64 && inventory.getNonEquipmentItems().get(1).getCount() == 6,
                 "merge before empty slots");
-        inventory = new Inventory(null);
-        for (int i = 0; i < inventory.items.size(); i++) inventory.items.set(i, new ItemStack(Items.STONE, 64));
-        inventory.offhand.set(0, new ItemStack(Items.IRON_INGOT, 63));
+        inventory = new Inventory(null, new net.minecraft.world.entity.EntityEquipment());
+        for (int i = 0; i < inventory.getNonEquipmentItems().size(); i++) inventory.getNonEquipmentItems().set(i, new ItemStack(Items.STONE, 64));
+        inventory.setItem(Inventory.SLOT_OFFHAND, new ItemStack(Items.IRON_INGOT, 63));
         remaining = new ItemStack(Items.IRON_INGOT, 10);
         InventoryTransfer.insert(inventory, remaining);
-        check(remaining.getCount() == 9 && inventory.offhand.get(0).getCount() == 64 && inventory.armor.get(0).isEmpty(),
+        check(remaining.getCount() == 9 && inventory.getItem(Inventory.SLOT_OFFHAND).getCount() == 64 && inventory.getItem(36).isEmpty(),
                 "partial offhand merge; full inventory preserves remainder and armour");
-        inventory.offhand.set(0, ItemStack.EMPTY);
+        inventory.setItem(Inventory.SLOT_OFFHAND, ItemStack.EMPTY);
         InventoryTransfer.insert(inventory, remaining);
-        check(remaining.getCount() == 9 && inventory.offhand.get(0).isEmpty(), "empty offhand is not filled");
-        inventory.items.set(0, new ItemStack(Items.IRON_INGOT, 61));
+        check(remaining.getCount() == 9 && inventory.getItem(Inventory.SLOT_OFFHAND).isEmpty(), "empty offhand is not filled");
+        inventory.getNonEquipmentItems().set(0, new ItemStack(Items.IRON_INGOT, 61));
         ItemStack firstOutput = new ItemStack(Items.IRON_INGOT, 2);
         ItemStack secondOutput = new ItemStack(Items.IRON_INGOT, 5);
         InventoryTransfer.insert(inventory, firstOutput);
         InventoryTransfer.insert(inventory, secondOutput);
-        check(firstOutput.isEmpty() && secondOutput.getCount() == 4 && inventory.items.get(0).getCount() == 64,
+        check(firstOutput.isEmpty() && secondOutput.getCount() == 4 && inventory.getNonEquipmentItems().get(0).getCount() == 64,
                 "multiple furnace outputs share available capacity and preserve partial remainder");
         ItemStack fullOutput = new ItemStack(Items.IRON_INGOT, 7);
         InventoryTransfer.insert(inventory, fullOutput);
-        check(fullOutput.getCount() == 7 && inventory.items.get(0).getCount() == 64, "full inventory leaves output untouched");
-        inventory.items.set(0, new ItemStack(Items.IRON_INGOT, 50));
-        inventory.items.get(0).set(DataComponents.CUSTOM_NAME, Component.literal("different components"));
+        check(fullOutput.getCount() == 7 && inventory.getNonEquipmentItems().get(0).getCount() == 64, "full inventory leaves output untouched");
+        inventory.getNonEquipmentItems().set(0, new ItemStack(Items.IRON_INGOT, 50));
+        inventory.getNonEquipmentItems().get(0).set(DataComponents.CUSTOM_NAME, Component.literal("different components"));
         InventoryTransfer.insert(inventory, remaining);
-        check(remaining.getCount() == 9 && inventory.items.get(0).getCount() == 50, "different components do not merge");
-        inventory = new Inventory(null);
+        check(remaining.getCount() == 9 && inventory.getNonEquipmentItems().get(0).getCount() == 50, "different components do not merge");
+        inventory = new Inventory(null, new net.minecraft.world.entity.EntityEquipment());
         remaining = new ItemStack(Items.ENDER_PEARL, 20);
         InventoryTransfer.insert(inventory, remaining);
-        check(remaining.isEmpty() && inventory.items.get(0).getCount() == 16 && inventory.items.get(1).getCount() == 4,
+        check(remaining.isEmpty() && inventory.getNonEquipmentItems().get(0).getCount() == 16 && inventory.getNonEquipmentItems().get(1).getCount() == 4,
                 "item stack limits");
     }
 
@@ -351,6 +359,51 @@ public final class RegressionChecks {
         mutable = mutable.copy().withStyle(ChatFormatting.RED);
         check(throttle.shouldShow(mutable, 2, true), "changed severity is immediate");
         check(new FeedbackThrottle().shouldShow(mutable, 2, true), "fresh session does not inherit suppression");
+    }
+
+    private static void renderSubmissions() throws ReflectiveOperationException {
+        var state = new net.minecraft.client.renderer.state.level.LevelRenderState();
+        int[] submissions = new int[3];
+        var collector = (net.minecraft.client.renderer.SubmitNodeCollector) java.lang.reflect.Proxy.newProxyInstance(
+                RegressionChecks.class.getClassLoader(), new Class<?>[]{net.minecraft.client.renderer.SubmitNodeCollector.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("submitShapeOutline")) {
+                        submissions[0]++;
+                        var pose = (com.mojang.blaze3d.vertex.PoseStack) args[0];
+                        check(pose.last().pose().m30() == -5 && pose.last().pose().m31() == -6,
+                                "outline submission uses the captured camera");
+                        check((int) args[3] == 0xCC00FF00, "outline color including alpha preserved");
+                    } else if (method.getName().equals("submitText")) {
+                        submissions[1]++;
+                    }
+                    return null;
+                });
+        com.thonyy.furnacedistributor.client.RenderHandler.submit(state, collector);
+        check(submissions[0] == 0 && submissions[1] == 0, "uncaptured frame submits nothing");
+        var outlineConstructor = Class.forName("com.thonyy.furnacedistributor.client.RenderHandler$Outline").getDeclaredConstructors()[0];
+        outlineConstructor.setAccessible(true);
+        var outline = outlineConstructor.newInstance(new net.minecraft.world.phys.AABB(BlockPos.ZERO), 0xCC00FF00);
+        var frameConstructor = Class.forName("com.thonyy.furnacedistributor.client.RenderHandler$Frame").getDeclaredConstructors()[0];
+        frameConstructor.setAccessible(true);
+        var item = new net.minecraft.client.renderer.item.ItemStackRenderState() {
+            @Override public void submit(com.mojang.blaze3d.vertex.PoseStack pose,
+                                         net.minecraft.client.renderer.SubmitNodeCollector nodes, int light, int overlay, int outline) {
+                submissions[2]++;
+            }
+        };
+        var frame = frameConstructor.newInstance(new net.minecraft.world.phys.Vec3(5, 6, 7), new org.joml.Quaternionf(),
+                java.util.List.of(outline), java.util.List.of(BlockPos.ZERO, new BlockPos(2, 0, 0)), item, 0f);
+        var field = com.thonyy.furnacedistributor.client.RenderHandler.class.getDeclaredField("FRAMES");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked") var frames = (Map<Object, Object>) field.get(null);
+        frames.put(state, frame);
+        try {
+            com.thonyy.furnacedistributor.client.RenderHandler.submit(state, collector);
+            check(submissions[0] == 1 && submissions[2] == 2, "outline and each floating item preview are preserved");
+            check(submissions[1] == 0, "unknown per-furnace quantities submit no text or symbols");
+        } finally {
+            frames.remove(state);
+        }
     }
 
     private static void equal(int[] actual, int[] expected, String label) {

@@ -10,7 +10,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
 import java.util.List;
 
@@ -28,7 +27,7 @@ public final class DistributionManager {
             return;
         }
         // Preserve the established preference for fuel when an item is both fuel and input.
-        boolean fuel = AbstractFurnaceBlockEntity.isFuel(heldItem);
+        boolean fuel = player.level().fuelValues().isFuel(heldItem);
         int[] capacities = new int[furnaces.size()];
         FurnaceTransfer.Inputs[] inputs = new FurnaceTransfer.Inputs[furnaces.size()];
         int eligible = 0;

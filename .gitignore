@@ -35,8 +35,15 @@ Thumbs.db
 # Gradle local
 gradle.properties.local
 
-#Tools 
+# Tools 
 tools/
 
-#Docs
+# Docs
 docs/
+
+# Diagnostic logs
+*.log
+
+# Agents.md
+
+AGENTS.md

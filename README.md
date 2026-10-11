@@ -50,7 +50,10 @@ Supported modes:
 - **Factory Mode** — distribute items across multiple processing inputs and collect from multiple outputs.
 - **Generator Mode** — distribute compatible fuels to furnaces equipped with the Generator Augment.
 
-The integration works across the currently supported Iron Furnaces tiers. **Iron Furnaces is not required** to use Furnace Distributor.
+For Minecraft 26.2, the integration targets **Astryxion's Iron Furnaces 1.0.0 for NeoForge 26.2**
+([CurseForge file 8573189](https://www.curseforge.com/minecraft/mc-mods/iron-furnaces-fabric-neoforge/files/8573189)).
+Its actual Normal, Factory and Generator APIs were inspected and tested. Other forks sharing the
+same mod ID are not assumed compatible. **Iron Furnaces is not required** to use Furnace Distributor.
 
 #### Factory Mode
 
@@ -235,6 +238,9 @@ Furnace Distributor includes translations for **12 languages**:
 
 ## Requirements
 
+This branch targets **Minecraft 26.2** and **Java 25**. See
+[PORT-26.2.md](PORT-26.2.md) for exact dependency versions, port details and validation results.
+
 ### Fabric
 
 Required:
@@ -272,7 +278,7 @@ Optional:
 
 ## Building From Source
 
-Install JDK 21. Set `JAVA_HOME` to your installation if necessary; machine-specific
+Install JDK 25. Set `JAVA_HOME` to your installation if necessary; machine-specific
 Java paths belong in your environment or user Gradle configuration, not this repository.
 
 Clone the repository:
@@ -285,7 +291,7 @@ cd FurnaceDistributor
 ### Windows
 
 ```powershell
-.\gradlew build
+.\gradlew.bat clean build
 ```
 
 ### Linux / macOS

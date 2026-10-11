@@ -4,7 +4,7 @@ import com.thonyy.furnacedistributor.logic.AreaBounds;
 import com.thonyy.furnacedistributor.logic.FurnaceArea;
 import dev.architectury.event.events.client.ClientGuiEvent;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 
@@ -13,10 +13,10 @@ public final class SelectionHud {
         ClientGuiEvent.RENDER_HUD.register((graphics, delta) -> render(graphics));
     }
 
-    private static void render(GuiGraphics graphics) {
+    private static void render(GuiGraphicsExtractor graphics) {
         Minecraft mc = Minecraft.getInstance();
         if (!ClientConfig.get().showSelectionHud || mc.player == null || mc.level == null
-                || mc.options.hideGui || mc.screen != null || !mc.player.isAlive() || mc.player.isSpectator()) return;
+                || mc.gui.hud.isHidden() || mc.gui.screen() != null || !mc.player.isAlive() || mc.player.isSpectator()) return;
         boolean distributing = FurnaceSelectionHandler.isInSelectionMode();
         boolean collecting = Collector.isInCollectionMode();
         if (distributing || collecting) {
@@ -49,10 +49,10 @@ public final class SelectionHud {
         }
     }
 
-    private static int line(GuiGraphics graphics, Minecraft mc, Component text, int y, int color) {
+    private static int line(GuiGraphicsExtractor graphics, Minecraft mc, Component text, int y, int color) {
         for (var part : mc.font.split(text, Math.max(40, graphics.guiWidth() - 12))) {
             graphics.fill(4, y - 2, 8 + mc.font.width(part), y + 10, 0x80000000);
-            graphics.drawString(mc.font, part, 6, y, color, true);
+            graphics.text(mc.font, part, 6, y, color | 0xFF000000, true);
             y += 12;
         }
         return y;

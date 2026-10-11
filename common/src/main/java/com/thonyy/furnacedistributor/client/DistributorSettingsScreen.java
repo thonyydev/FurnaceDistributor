@@ -2,7 +2,7 @@ package com.thonyy.furnacedistributor.client;
 
 import com.thonyy.furnacedistributor.feedback.PlayerFeedback;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
@@ -45,7 +45,7 @@ public final class DistributorSettingsScreen extends Screen {
             addRenderableWidget(Button.builder(Component.translatable("config.furnacedistributor.close_without_saving"), button -> {
                 reportSaveFailure();
                 closeHandled = true;
-                minecraft.setScreen(parent);
+                minecraft.gui.setScreen(parent);
             }).bounds(width / 2 + 4, top + 104, 146, 20)
                     .tooltip(Tooltip.create(Component.translatable("config.furnacedistributor.unsaved.tooltip"))).build());
         } else {
@@ -76,11 +76,11 @@ public final class DistributorSettingsScreen extends Screen {
         if (!ClientConfig.save()) {
             saveFailed = true;
             rebuildWidgets();
-            minecraft.getNarrator().sayNow(Component.translatable("config.furnacedistributor.save_error"));
+            minecraft.getNarrator().saySystemNow(Component.translatable("config.furnacedistributor.save_error"));
             return;
         }
         closeHandled = true;
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 
     @Override
@@ -98,12 +98,12 @@ public final class DistributorSettingsScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawCenteredString(font, title, width / 2, Math.max(12, height / 2 - 100), 0xFFFFFF);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        graphics.centeredText(font, title, width / 2, Math.max(12, height / 2 - 100), 0xFFFFFFFF);
         if (saveFailed) {
-            graphics.drawWordWrap(font, Component.translatable("config.furnacedistributor.save_error"),
-                    width / 2 - 150, Math.max(32, height / 2 - 72) + 128, 300, 0xFF5555);
+            graphics.textWithWordWrap(font, Component.translatable("config.furnacedistributor.save_error"),
+                    width / 2 - 150, Math.max(32, height / 2 - 72) + 128, 300, 0xFFFF5555);
         }
     }
 }

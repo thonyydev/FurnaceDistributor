@@ -23,7 +23,7 @@ public final class Collector {
     public static void handleCollection() {
         Minecraft mc = Minecraft.getInstance();
 
-        if (mc.level == null || mc.player == null || mc.screen != null || !mc.isWindowActive()
+        if (mc.level == null || mc.player == null || mc.gui.screen() != null || !mc.isWindowActive()
                 || !mc.player.isAlive() || mc.player.isSpectator()) {
             return;
         }

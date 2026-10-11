@@ -1,6 +1,6 @@
 plugins {
-    id 'dev.architectury.loom' version '1.17-SNAPSHOT' apply false
-    id 'architectury-plugin' version '3.5-SNAPSHOT'
+    id 'dev.architectury.loom-no-remap' version '1.17.493' apply false
+    id 'architectury-plugin' version '3.5.170'
     id 'com.gradleup.shadow' version '9.4.3' apply false
 }
 
@@ -14,13 +14,20 @@ allprojects {
 }
 
 subprojects {
-    apply plugin: 'dev.architectury.loom'
+    apply plugin: 'dev.architectury.loom-no-remap'
     apply plugin: 'architectury-plugin'
     apply plugin: 'maven-publish'
 
     base {
         // Set up a suffixed format for the mod jar names, e.g. `example-fabric`.
         archivesName = "$rootProject.archives_name-$project.name"
+    }
+
+    if (rootProject.enabled_platforms.split(',').contains(project.name)) {
+        tasks.withType(Jar).configureEach {
+            archiveBaseName = "$rootProject.mod_id-$project.name"
+            archiveVersion = "$rootProject.mod_version+$rootProject.minecraft_version"
+        }
     }
 
     repositories {
@@ -31,28 +38,20 @@ subprojects {
         // for more information about repositories.
     }
 
-    loom {
-        silentMojangMappingsLicense()
-    }
-
     dependencies {
         minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
-        mappings loom.officialMojangMappings()
     }
 
     java {
-        toolchain.languageVersion = JavaLanguageVersion.of(21)
-        // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-        // if it is present.
-        // If you remove this line, sources will not be generated.
+        toolchain.languageVersion = JavaLanguageVersion.of(25)
         withSourcesJar()
 
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
     }
 
     tasks.withType(JavaCompile).configureEach {
-        it.options.release = 21
+        it.options.release = 25
     }
 
     // Configure Maven publishing.

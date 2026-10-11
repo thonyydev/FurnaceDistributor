@@ -1,5 +1,5 @@
 {
-  "key.categories.furnacedistributor": "Furnace Distributor",
+  "key.category.furnacedistributor.main": "Furnace Distributor",
   "key.furnacedistributor.distribute": "Gegenstände verteilen",
   "key.furnacedistributor.collect": "Gegenstände einsammeln",
   "message.furnacedistributor.look_at_furnace": "Du musst einen Ofen anvisieren!",
@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "%s Gegenstände bleiben in deiner Hand, weil einige Öfen sie nicht aufnehmen konnten.",
   "message.furnacedistributor.config_save_failed": "Die Einstellungen wurden nicht gespeichert. Änderungen können beim Neustart verloren gehen; sieh im Log nach.",
   "hud.furnacedistributor.select_second": "Wähle den zweiten Ofen mit %s aus",
-  "hud.furnacedistributor.estimate": "%s Öfen · %s Gegenstände in der Hand (Mengen vom Server bestimmt)",
+  "hud.furnacedistributor.estimate": "%s Öfen · %s Gegenstände in der Hand",
   "hud.furnacedistributor.furnaces": "%s Öfen im Bereich",
   "hud.furnacedistributor.cancel": "%s: abbrechen und gespeicherten Bereich löschen",
   "hud.furnacedistributor.saved_area": "Gespeicherter Bereich: %s + %s zum Verteilen, %s zum Einsammeln",

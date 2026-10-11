@@ -42,7 +42,7 @@ public final class ClientEvents {
         Collector.tick();
         SelectionFeedback.tick();
 
-        if (minecraft.screen != null || !minecraft.isWindowActive() || !minecraft.player.isAlive()
+        if (minecraft.gui.screen() != null || !minecraft.isWindowActive() || !minecraft.player.isAlive()
                 || minecraft.player.isSpectator()) {
             drainKeys();
             return;
@@ -50,7 +50,7 @@ public final class ClientEvents {
 
         if (consumeClicks(KeyBindings.SETTINGS_KEY)) {
             drainKeys();
-            minecraft.setScreen(new DistributorSettingsScreen());
+            minecraft.gui.setScreen(new DistributorSettingsScreen());
             return;
         }
 

@@ -12,7 +12,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
-/** Iron Furnaces NeoForge 1.21.1 / 4.3.2. No tier-specific block registry checks or reflection. */
+/** Astryxion Iron Furnaces NeoForge 26.2 / 1.0.0. No tier-specific registry checks or reflection. */
 public final class IronFurnacesAccess implements FurnaceAccess {
     @Override public boolean supports(BlockEntity entity) { return entity instanceof BlockIronFurnaceTileBase; }
     @Override public Container inventory(BlockEntity entity) { return (BlockIronFurnaceTileBase) entity; }
@@ -27,7 +27,7 @@ public final class IronFurnacesAccess implements FurnaceAccess {
             return BlockIronFurnaceTileBase.FACTORY_INPUT.clone();
         }
         if (!furnace.isFurnace()) return new int[0];
-        boolean fuel = vanillaFuel || BlockIronFurnaceTileBase.isItemFuel(stack, furnace.recipeType);
+        boolean fuel = vanillaFuel || BlockIronFurnaceTileBase.isItemFuel(stack, furnace.recipeType, furnace.getLevel());
         return new int[]{fuel ? BlockIronFurnaceTileBase.FUEL : BlockIronFurnaceTileBase.INPUT};
     }
 
@@ -55,7 +55,7 @@ public final class IronFurnacesAccess implements FurnaceAccess {
         // SlotIronFurnaceInputGenerator.safeInsert accepts one such fuel: the generator tick replaces
         // the entire fuel stack with its crafting remainder, instead of shrinking one item first.
         return furnace.isGenerator() && slot == BlockIronFurnaceTileBase.GENERATOR_FUEL
-                && stack.hasCraftingRemainingItem() ? Math.min(1, limit) : limit;
+                && stack.getCraftingRemainder() != null ? Math.min(1, limit) : limit;
     }
 
     private static boolean augmentsSynchronized(BlockIronFurnaceTileBase furnace) {
@@ -73,7 +73,7 @@ public final class IronFurnacesAccess implements FurnaceAccess {
         int[] inputs = BlockIronFurnaceTileBase.FACTORY_INPUT;
         int[] outputs = new int[inputs.length + 1];
         outputs[0] = BlockIronFurnaceTileBase.OUTPUT;
-        // 4.3.2's canFactorySmelt/factorySmelt/autoFactoryIO pair input with input + 6.
+        // The 26.2 port's canFactorySmelt/factorySmelt/autoFactoryIO still pair input with input + 6.
         // There is no public FACTORY_OUTPUT or pairing accessor. The offset is the input-array length.
         // Include inactive outputs: a tier/augment change must not strand already produced items.
         for (int i = 0; i < inputs.length; i++) outputs[i + 1] = inputs[i] + inputs.length;

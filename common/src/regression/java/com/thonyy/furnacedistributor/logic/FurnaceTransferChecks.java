@@ -86,15 +86,15 @@ final class FurnaceTransferChecks {
         check(fixture.inventory.getItem(0).is(Items.IRON_ORE), "never overwrite changed input");
 
         fixture = new Fixture();
-        Inventory player = new Inventory(null);
+        Inventory player = new Inventory(null, new net.minecraft.world.entity.EntityEquipment());
         for (int slot = 3; slot < 6; slot++) fixture.inventory.setItem(slot, named.copyWithCount(slot));
         FurnaceTransfer.Collected collected = FurnaceTransfer.collect(fixture.target, player);
         check(collected.count() == 12 && !collected.remaining(), "all factory outputs collected");
-        check(player.items.getFirst().getCount() == 12 && ItemStack.isSameItemSameComponents(player.items.getFirst(), named),
+        check(player.getNonEquipmentItems().getFirst().getCount() == 12 && ItemStack.isSameItemSameComponents(player.getNonEquipmentItems().getFirst(), named),
                 "output components preserved");
         check(FurnaceTransfer.collect(fixture.target, player).count() == 0, "repeat collection cannot duplicate");
 
-        for (int i = 0; i < player.items.size(); i++) player.items.set(i, new ItemStack(Items.STONE, 64));
+        for (int i = 0; i < player.getNonEquipmentItems().size(); i++) player.getNonEquipmentItems().set(i, new ItemStack(Items.STONE, 64));
         fixture.inventory.setItem(3, named.copyWithCount(80));
         fixture.inventory.setItem(4, named.copyWithCount(5));
         // Bypass SimpleContainer.setItem's clamp to represent an upstream oversized output.
@@ -102,7 +102,7 @@ final class FurnaceTransferChecks {
         collected = FurnaceTransfer.collect(fixture.target, player);
         check(collected.count() == 0 && collected.remaining() && fixture.inventory.getItem(3).getCount() == 80,
                 "full inventory preserves exact outputs");
-        player.items.set(0, named.copyWithCount(60));
+        player.getNonEquipmentItems().set(0, named.copyWithCount(60));
         collected = FurnaceTransfer.collect(fixture.target, player);
         check(collected.count() == 4 && collected.remaining() && fixture.inventory.getItem(3).getCount() == 76
                 && fixture.inventory.getItem(4).getCount() == 5, "oversized partial remainder is never clamped/lost");

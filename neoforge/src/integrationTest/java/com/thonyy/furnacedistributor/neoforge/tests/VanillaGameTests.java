@@ -5,7 +5,6 @@ import com.thonyy.furnacedistributor.furnace.FurnaceAccessRegistry;
 import com.thonyy.furnacedistributor.logic.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,9 +17,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
-@PrefixGameTestTemplate(false)
 public class VanillaGameTests {
     static final String NAMESPACE = "furnacedistributor_tests";
     static final BlockPos FIRST = new BlockPos(1, 1, 1);
@@ -33,8 +30,8 @@ public class VanillaGameTests {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         BlockPos pos = helper.absolutePos(FIRST);
         player.setPos(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        player.getInventory().items.set(0, stack);
-        player.getInventory().selected = 0;
+        player.getInventory().getNonEquipmentItems().set(0, stack);
+        player.getInventory().setSelectedSlot(0);
         return player;
     }
 
@@ -47,15 +44,27 @@ public class VanillaGameTests {
     }
     static AbstractFurnaceBlockEntity furnace(GameTestHelper helper, int index, Block block) {
         helper.setBlock(FIRST.offset(index, 0, 0), block);
-        return helper.getBlockEntity(FIRST.offset(index, 0, 0));
+        return helper.getBlockEntity(FIRST.offset(index, 0, 0), AbstractFurnaceBlockEntity.class);
     }
 
     private static int experience(GameTestHelper helper) {
-        return helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).stream()
-                .mapToInt(orb -> orb.getValue() * orb.saveWithoutId(new net.minecraft.nbt.CompoundTag()).getInt("Count")).sum();
+        return helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).stream()
+                .mapToInt(orb -> orb.getValue() * orbCount(orb)).sum();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    private static int orbCount(net.minecraft.world.entity.ExperienceOrb orb) {
+        var output = net.minecraft.world.level.storage.TagValueOutput.createWithoutContext(net.minecraft.util.ProblemReporter.DISCARDING);
+        orb.saveWithoutId(output);
+        return output.buildResult().getIntOr("Count", 1);
+    }
+
+    static void lock(GameTestHelper helper, AbstractFurnaceBlockEntity furnace) {
+        var predicate = net.minecraft.advancements.predicates.ItemPredicate.Builder.item()
+                .of(helper.getLevel().registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ITEM), Items.TRIPWIRE_HOOK).build();
+        furnace.applyComponents(net.minecraft.core.component.DataComponentMap.EMPTY,
+                net.minecraft.core.component.DataComponentPatch.builder().set(DataComponents.LOCK, new net.minecraft.world.LockCode(predicate)).build());
+    }
+
     public static void startupAndVanilla128(GameTestHelper helper) {
         helper.assertTrue(ModList.get().isLoaded("ironfurnaces") == Boolean.getBoolean("furnacedistributor.tests.expectIron"),
                 "actual mod presence must match test run");
@@ -76,7 +85,6 @@ public class VanillaGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void blastSmokerAndInvalidRecipes(GameTestHelper helper) {
         var a = furnace(helper, 0, Blocks.FURNACE);
         var b = furnace(helper, 1, Blocks.BLAST_FURNACE);
@@ -85,17 +93,16 @@ public class VanillaGameTests {
         distribute(helper, player, 3);
         helper.assertTrue(a.getItem(0).getCount() == 32 && b.getItem(0).getCount() == 32 && c.getItem(0).isEmpty(), "blast recipe");
         a.clearContent(); b.clearContent();
-        player.getInventory().items.set(0, new ItemStack(Items.BEEF, 64));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.BEEF, 64));
         distribute(helper, player, 3);
         helper.assertTrue(a.getItem(0).getCount() == 32 && c.getItem(0).getCount() == 32 && b.getItem(0).isEmpty(), "smoking recipe");
         a.clearContent(); c.clearContent();
-        player.getInventory().items.set(0, new ItemStack(Items.DIAMOND, 64));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.DIAMOND, 64));
         distribute(helper, player, 3);
         helper.assertTrue(a.isEmpty() && b.isEmpty() && c.isEmpty() && player.getMainHandItem().getCount() == 64, "invalid recipe");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void partialFullComponentsAndFuel(GameTestHelper helper) {
         var a = furnace(helper, 0, Blocks.FURNACE);
         var b = furnace(helper, 1, Blocks.FURNACE);
@@ -110,45 +117,43 @@ public class VanillaGameTests {
         ItemStack named = new ItemStack(Items.COBBLESTONE, 8);
         named.set(DataComponents.CUSTOM_NAME, Component.literal("preserved"));
         a.clearContent(); b.clearContent();
-        player.getInventory().items.set(0, named);
+        player.getInventory().getNonEquipmentItems().set(0, named);
         distribute(helper, player, 3);
         helper.assertTrue(a.getItem(0).getCount() == 4 && b.getItem(0).getCount() == 4
                 && a.getItem(0).has(DataComponents.CUSTOM_NAME), "component copies");
         a.getItem(0).shrink(1);
         helper.assertTrue(b.getItem(0).getCount() == 4, "independent mutable stacks");
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 12));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 12));
         distribute(helper, player, 3);
         helper.assertTrue(a.getItem(1).getCount() == 4 && b.getItem(1).getCount() == 4 && c.getItem(1).getCount() == 4, "fuel priority");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void collectionFullPartialAndXp(GameTestHelper helper) {
         var furnace = furnace(helper, 0, Blocks.FURNACE);
-        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+        var recipe = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.SMELTING,
                 new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
         furnace.setRecipeUsed(recipe);
         // Two iron recipes guarantee at least one XP; one recipe can legitimately round down to zero.
         furnace.setRecipeUsed(recipe);
         furnace.setItem(2, new ItemStack(Items.IRON_INGOT, 10));
         ServerPlayer player = player(helper, ItemStack.EMPTY);
-        for (int i = 0; i < player.getInventory().items.size(); i++) player.getInventory().items.set(i, new ItemStack(Items.STONE, 64));
+        for (int i = 0; i < player.getInventory().getNonEquipmentItems().size(); i++) player.getInventory().getNonEquipmentItems().set(i, new ItemStack(Items.STONE, 64));
         collect(helper, player, 1);
-        helper.assertTrue(furnace.getItem(2).getCount() == 10 && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "full: no loss or XP");
-        player.getInventory().items.set(1, new ItemStack(Items.IRON_INGOT, 60));
+        helper.assertTrue(furnace.getItem(2).getCount() == 10 && helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "full: no loss or XP");
+        player.getInventory().getNonEquipmentItems().set(1, new ItemStack(Items.IRON_INGOT, 60));
         collect(helper, player, 1);
-        helper.assertTrue(furnace.getItem(2).getCount() == 6 && player.getInventory().items.get(1).getCount() == 64, "partial output");
-        helper.assertTrue(!helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "vanilla XP delivered");
+        helper.assertTrue(furnace.getItem(2).getCount() == 6 && player.getInventory().getNonEquipmentItems().get(1).getCount() == 64, "partial output");
+        helper.assertTrue(!helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "vanilla XP delivered");
         int experience = experience(helper);
-        player.getInventory().items.set(1, ItemStack.EMPTY);
+        player.getInventory().getNonEquipmentItems().set(1, ItemStack.EMPTY);
         collect(helper, player, 1);
         collect(helper, player, 1);
-        helper.assertTrue(furnace.getItem(2).isEmpty() && player.getInventory().items.get(1).getCount() == 6
+        helper.assertTrue(furnace.getItem(2).isEmpty() && player.getInventory().getNonEquipmentItems().get(1).getCount() == 6
                 && experience(helper) == experience, "repeat: no item or XP duplication");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void distributionAndCollectionShareCooldown(GameTestHelper helper) {
         var furnace = furnace(helper, 0, Blocks.FURNACE);
         var player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
@@ -165,7 +170,7 @@ public class VanillaGameTests {
             collect(helper, player, 1);
             helper.assertTrue(furnace.getItem(2).isEmpty() && player.getMainHandItem().getCount() == 3, "collection accepted with cooldown disabled");
             ServerConfig.get().requestCooldownTicks = 5;
-            player.getInventory().items.set(0, new ItemStack(Items.COBBLESTONE, 8));
+            player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COBBLESTONE, 8));
             distribute(helper, player, 1);
             helper.assertTrue(furnace.getItem(0).getCount() == 16 && player.getMainHandItem().getCount() == 8,
                     "collection prevents distribution in the same tick");
@@ -196,7 +201,6 @@ public class VanillaGameTests {
         });
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void rangeAndAccess(GameTestHelper helper) {
         var furnace = furnace(helper, 0, Blocks.FURNACE);
         ServerPlayer player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
@@ -215,7 +219,6 @@ public class VanillaGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void unloadedChunksAndVanillaLock(GameTestHelper helper) {
         var furnace = furnace(helper, 0, Blocks.FURNACE);
         ServerPlayer player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
@@ -224,21 +227,16 @@ public class VanillaGameTests {
         var scan = FurnaceArea.scan(helper.getLevel(), far, far);
         helper.assertTrue(!scan.valid() && "area_unloaded".equals(scan.error())
                 && !helper.getLevel().hasChunk(far.getX() >> 4, far.getZ() >> 4), "scan never loads a chunk");
-        var tag = new net.minecraft.nbt.CompoundTag();
-        tag.putString("Lock", "key required");
-        furnace.loadWithComponents(tag, helper.getLevel().registryAccess());
+        lock(helper, furnace);
         distribute(helper, player, 1);
         helper.assertTrue(furnace.getItem(0).isEmpty() && player.getMainHandItem().getCount() == 16, "vanilla lock respected");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void secondLockedFurnaceRejectsDistributionAndCollection(GameTestHelper helper) {
         var first = furnace(helper, 0, Blocks.FURNACE);
         var second = furnace(helper, 1, Blocks.FURNACE);
-        var tag = new net.minecraft.nbt.CompoundTag();
-        tag.putString("Lock", "key required");
-        second.loadWithComponents(tag, helper.getLevel().registryAccess());
+        lock(helper, second);
         var player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
         boolean partial = ServerConfig.get().allowPartialDistribution;
         try {
@@ -249,15 +247,15 @@ public class VanillaGameTests {
                     && player.getMainHandItem().getCount() == 16, "second lock rejects all distribution before any debit");
             first.setItem(2, new ItemStack(Items.IRON_INGOT, 10));
             second.setItem(2, new ItemStack(Items.IRON_INGOT, 5));
-            var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+            var recipe = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.SMELTING,
                     new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
             first.setRecipeUsed(recipe);
             first.setRecipeUsed(recipe);
             collect(helper, player, 2);
             helper.assertTrue(first.getItem(2).getCount() == 10 && second.getItem(2).getCount() == 5
-                    && player.getInventory().items.stream().noneMatch(stack -> stack.is(Items.IRON_INGOT))
+                    && player.getInventory().getNonEquipmentItems().stream().noneMatch(stack -> stack.is(Items.IRON_INGOT))
                     && player.getMainHandItem().getCount() == 16
-                    && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(),
+                    && helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).isEmpty(),
                     "second lock rejects all collection and XP before any extraction");
         } finally {
             ServerConfig.get().allowPartialDistribution = partial;

@@ -31,7 +31,7 @@ public final class OperationGuard {
     public static List<FurnaceTarget> find(ServerPlayer player, BlockPos first, BlockPos second) {
         if (!player.isAlive() || player.isSpectator() || player.hasDisconnected()
                 || player.containerMenu != player.inventoryMenu) return null;
-        long now = player.serverLevel().getGameTime();
+        long now = player.level().getGameTime();
         Long previous = LAST_REQUEST.get(player.getUUID());
         if (previous != null && now >= previous && now - previous < ServerConfig.get().requestCooldownTicks) {
             return null; // Silent rejection prevents chat spam as well as repeated area scans.

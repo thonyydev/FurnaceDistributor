@@ -1,5 +1,5 @@
 {
-  "key.categories.furnacedistributor": "Furnace Distributor",
+  "key.category.furnacedistributor.main": "Furnace Distributor",
   "key.furnacedistributor.distribute": "Répartir les objets",
   "key.furnacedistributor.collect": "Récupérer les objets",
   "message.furnacedistributor.look_at_furnace": "Vous devez viser un four !",
@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "%s objet(s) restent en main, car certains fours n'ont pas pu les recevoir.",
   "message.furnacedistributor.config_save_failed": "Les paramètres n'ont pas été enregistrés. Les modifications risquent d'être perdues au redémarrage ; consultez le journal.",
   "hud.furnacedistributor.select_second": "Sélectionnez le deuxième four avec %s",
-  "hud.furnacedistributor.estimate": "%s four(s) · %s objet(s) en main (quantités déterminées par le serveur)",
+  "hud.furnacedistributor.estimate": "%s four(s) · %s objet(s) en main",
   "hud.furnacedistributor.furnaces": "%s four(s) dans la zone",
   "hud.furnacedistributor.cancel": "%s : annuler et effacer la zone enregistrée",
   "hud.furnacedistributor.saved_area": "Zone enregistrée : %s + %s pour répartir, %s pour récupérer",

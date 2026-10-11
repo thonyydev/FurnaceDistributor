@@ -1,5 +1,5 @@
 {
-  "key.categories.furnacedistributor": "Furnace Distributor",
+  "key.category.furnacedistributor.main": "Furnace Distributor",
   "key.furnacedistributor.distribute": "分配物品",
   "key.furnacedistributor.collect": "收集物品",
   "message.furnacedistributor.look_at_furnace": "你需要对准一个熔炉！",
@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "仍有 %s 个物品保留在你手中，因为部分熔炉无法接收它们。",
   "message.furnacedistributor.config_save_failed": "设置未保存。重启后可能丢失更改；请查看日志。",
   "hud.furnacedistributor.select_second": "按 %s 选择第二个熔炉",
-  "hud.furnacedistributor.estimate": "%s 个熔炉 · 手持 %s 个物品（数量由服务器决定）",
+  "hud.furnacedistributor.estimate": "%s 个熔炉 · 手持 %s 个物品",
   "hud.furnacedistributor.furnaces": "区域内有 %s 个熔炉",
   "hud.furnacedistributor.cancel": "%s：取消并清除已保存区域",
   "hud.furnacedistributor.saved_area": "已保存区域：%s + %s 分配，%s 收集",

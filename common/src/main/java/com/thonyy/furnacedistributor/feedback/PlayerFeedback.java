@@ -24,7 +24,8 @@ public final class PlayerFeedback {
             if (!RECENT.computeIfAbsent(player, ignored -> new FeedbackThrottle())
                     .shouldShow(message, player.tickCount, overlay)) return;
         }
-        player.displayClientMessage(message, overlay);
+        if (overlay) player.sendOverlayMessage(message);
+        else player.sendSystemMessage(message);
     }
 
     private PlayerFeedback() { }

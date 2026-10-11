@@ -5,7 +5,8 @@ import com.thonyy.furnacedistributor.client.RenderHandler;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 
 @EventBusSubscriber(
         modid = FurnaceDistributor.MOD_ID,
@@ -14,21 +15,10 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 public final class NeoForgeRenderEvents {
 
     @SubscribeEvent
-    public static void onRenderLevel(
-            RenderLevelStageEvent event
-    ) {
-        if (
-                event.getStage()
-                        != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS
-        ) {
-            return;
-        }
+    public static void onExtractLevel(ExtractLevelRenderStateEvent event) { RenderHandler.extract(event.getCamera(), event.getRenderState()); }
 
-        RenderHandler.render(
-                event.getPoseStack(),
-                event.getCamera()
-        );
-    }
+    @SubscribeEvent
+    public static void onSubmit(SubmitCustomGeometryEvent event) { RenderHandler.submit(event.getLevelRenderState(), event.getSubmitNodeCollector()); }
 
     private NeoForgeRenderEvents() {
     }

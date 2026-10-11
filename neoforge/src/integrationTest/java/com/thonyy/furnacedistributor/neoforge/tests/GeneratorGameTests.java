@@ -5,17 +5,15 @@ import com.thonyy.furnacedistributor.logic.*;
 import ironfurnaces.tileentity.furnaces.BlockIronFurnaceTileBase;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import java.util.Arrays;
 
@@ -23,11 +21,10 @@ import static com.thonyy.furnacedistributor.neoforge.tests.IronGameTests.*;
 import static com.thonyy.furnacedistributor.neoforge.tests.VanillaGameTests.*;
 import static ironfurnaces.tileentity.furnaces.BlockIronFurnaceTileBase.*;
 
-/** Actual Iron 4.3.2 entities and ticks; optional test mod only, never in production jars. */
-@PrefixGameTestTemplate(false)
+/** Actual Iron Furnaces 26.2 / 1.0.0 entities and ticks; never included in production jars. */
 public class GeneratorGameTests {
     private static ItemStack augment(String name) {
-        return new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("ironfurnaces", "augment_" + name)));
+        return new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("ironfurnaces", "augment_" + name)));
     }
 
     private static void mode(BlockIronFurnaceTileBase furnace, String name) {
@@ -49,7 +46,6 @@ public class GeneratorGameTests {
 
     private static int stored(BlockIronFurnaceTileBase furnace) { return furnace.getItem(GENERATOR_FUEL).getCount(); }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void balanced192And100(GameTestHelper helper) {
         var a = generator(helper, 0, "iron");
         var b = generator(helper, 1, "gold");
@@ -58,19 +54,18 @@ public class GeneratorGameTests {
         distribute(helper, player, 3);
         helper.assertTrue(stored(a) == 64 && stored(b) == 64 && stored(c) == 64 && player.getMainHandItem().isEmpty(), "192 -> 64/64/64");
         a.setItem(GENERATOR_FUEL, ItemStack.EMPTY); b.setItem(GENERATOR_FUEL, ItemStack.EMPTY); c.setItem(GENERATOR_FUEL, ItemStack.EMPTY);
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 100));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 100));
         distribute(helper, player, 3);
         helper.assertTrue(stored(a) == 34 && stored(b) == 33 && stored(c) == 33 && player.getMainHandItem().isEmpty(), "100 -> 34/33/33");
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 92));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 92));
         distribute(helper, player, 3);
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 12));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 12));
         distribute(helper, player, 3); distribute(helper, player, 3);
         helper.assertTrue(stored(a) + stored(b) + stored(c) + player.getMainHandItem().getCount() == 204
                 && player.getMainHandItem().getCount() == 12, "repeated full transfers conserve all coal");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void partialAndRedistribution(GameTestHelper helper) {
         var a = generator(helper, 0, "iron");
         var b = generator(helper, 1, "gold");
@@ -79,35 +74,33 @@ public class GeneratorGameTests {
         distribute(helper, player, 1);
         helper.assertTrue(stored(a) == 64 && player.getMainHandItem().getCount() == 32, "only remaining 32 debited");
         a.setItem(GENERATOR_FUEL, new ItemStack(Items.COAL, 32));
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 96));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 96));
         distribute(helper, player, 2);
         helper.assertTrue(stored(a) == 64 && stored(b) == 64 && player.getMainHandItem().isEmpty(), "32 + 64 remaining capacity");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void invalidAndIncompatibleFuel(GameTestHelper helper) {
         var furnace = generator(helper, 0, "diamond");
         var player = player(helper, ItemStack.EMPTY);
         for (var item : new net.minecraft.world.item.Item[]{Items.COBBLESTONE, Items.IRON_ORE, Items.DIAMOND}) {
-            player.getInventory().items.set(0, new ItemStack(item, 16));
+            player.getInventory().getNonEquipmentItems().set(0, new ItemStack(item, 16));
             helper.assertFalse(furnace.canPlaceItem(GENERATOR_FUEL, player.getMainHandItem()), "Iron rejects invalid fuel");
             distribute(helper, player, 1);
             helper.assertTrue(stored(furnace) == 0 && player.getMainHandItem().getCount() == 16
                     && furnace.getItem(INPUT).isEmpty() && inputCount(furnace) == 0, "no processing fallback");
         }
         furnace.setItem(GENERATOR_FUEL, new ItemStack(Items.CHARCOAL, 32));
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 64));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 64));
         distribute(helper, player, 1);
         helper.assertTrue(furnace.getItem(GENERATOR_FUEL).is(Items.CHARCOAL) && stored(furnace) == 32
                 && player.getMainHandItem().getCount() == 64, "coal never overwrites charcoal");
-        player.getInventory().items.set(0, new ItemStack(Items.CHARCOAL, 64));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.CHARCOAL, 64));
         distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 64 && player.getMainHandItem().getCount() == 32, "charcoal follows actual Iron validator");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void componentsAndLimits(GameTestHelper helper) {
         var furnace = generator(helper, 0, "iron");
         ItemStack named = new ItemStack(Items.COAL, 20);
@@ -119,18 +112,17 @@ public class GeneratorGameTests {
                 && ItemStack.isSameItemSameComponents(furnace.getItem(GENERATOR_FUEL), named), "stack component limit and data preserved");
         furnace.getItem(GENERATOR_FUEL).shrink(4);
         helper.assertTrue(named.getCount() == 12, "source and destination are independent");
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 16));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 16));
         distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 4 && player.getMainHandItem().getCount() == 16, "components prevent mixing");
         furnace.setItem(GENERATOR_FUEL, ItemStack.EMPTY);
-        player.getInventory().items.set(0, new ItemStack(Items.LAVA_BUCKET));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.LAVA_BUCKET));
         distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 1 && furnace.getItem(GENERATOR_FUEL).is(Items.LAVA_BUCKET)
                 && player.getMainHandItem().isEmpty(), "nonstackable fuel limit");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void moddedFuelAndCraftingRemainder(GameTestHelper helper) {
         var furnace = generator(helper, 0, "gold");
         var player = player(helper, new ItemStack(IntegrationTestMod.GENERATOR_FUEL.get(), 64));
@@ -138,7 +130,7 @@ public class GeneratorGameTests {
         distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 64 && player.getMainHandItem().isEmpty(), "real registered test-mod fuel");
         furnace.setItem(GENERATOR_FUEL, ItemStack.EMPTY);
-        player.getInventory().items.set(0, new ItemStack(IntegrationTestMod.REMAINDER_FUEL.get(), 16));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(IntegrationTestMod.REMAINDER_FUEL.get(), 16));
         distribute(helper, player, 1); distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 1 && player.getMainHandItem().getCount() == 15, "stackable remainder fuel limited to one, like Iron GUI");
         tick(furnace);
@@ -149,7 +141,6 @@ public class GeneratorGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void mixedAllModes(GameTestHelper helper) {
         var vanilla = furnace(helper, 0, Blocks.FURNACE);
         var normal = iron(helper, 1, "iron", false);
@@ -168,7 +159,6 @@ public class GeneratorGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void dynamicModeTransitions(GameTestHelper helper) {
         var furnace = iron(helper, 0, "diamond", false);
         var adapter = FurnaceAccessRegistry.find(furnace).access(); // Populate class cache before mode changes.
@@ -177,21 +167,20 @@ public class GeneratorGameTests {
         helper.assertTrue(stored(furnace) == 12, "Normal -> Generator uses generator fuel");
         furnace.setItem(GENERATOR_FUEL, ItemStack.EMPTY);
         mode(furnace, "");
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 12)); distribute(helper, player, 1);
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 12)); distribute(helper, player, 1);
         helper.assertTrue(furnace.getItem(FUEL).getCount() == 12 && stored(furnace) == 0, "Generator -> Normal uses normal fuel");
         furnace.setItem(FUEL, ItemStack.EMPTY);
         mode(furnace, "factory"); mode(furnace, "generator");
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 12)); distribute(helper, player, 1);
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 12)); distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 12 && inputCount(furnace) == 0, "Factory -> Generator");
         furnace.setItem(GENERATOR_FUEL, ItemStack.EMPTY);
         mode(furnace, "factory");
-        player.getInventory().items.set(0, new ItemStack(Items.RAW_IRON, 12)); distribute(helper, player, 1);
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.RAW_IRON, 12)); distribute(helper, player, 1);
         helper.assertTrue(inputCount(furnace) == 12 && stored(furnace) == 0
                 && FurnaceAccessRegistry.find(furnace).access() == adapter, "Generator -> Factory, same cached adapter");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void augmentChangesBetweenPlanAndWrite(GameTestHelper helper) {
         var furnace = generator(helper, 0, "diamond");
         for (String next : new String[]{"", "factory"}) {
@@ -229,7 +218,6 @@ public class GeneratorGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void smokingBlastingAndHeaterRules(GameTestHelper helper) {
         var furnace = generator(helper, 0, "iron");
         var player = player(helper, new ItemStack(Items.BREAD, 16));
@@ -239,29 +227,28 @@ public class GeneratorGameTests {
         helper.assertTrue(furnace.getItem(GENERATOR_FUEL).is(Items.BREAD) && stored(furnace) == 16
                 && player.getMainHandItem().isEmpty(), "Smoking generator does not require a cooking recipe");
         furnace.setItem(GENERATOR_FUEL, ItemStack.EMPTY);
-        player.getInventory().items.set(0, new ItemStack(Items.COAL, 16)); distribute(helper, player, 1);
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 16)); distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 0 && player.getMainHandItem().getCount() == 16, "Smoking rejects coal");
         furnace.setItem(AUGMENT_RED, augment("blasting")); tick(furnace);
-        player.getInventory().items.set(0, new ItemStack(Items.DIAMOND, 16));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.DIAMOND, 16));
         helper.assertTrue(furnace.hasGeneratorBlastingRecipe(player.getMainHandItem())
                 && furnace.canPlaceItem(GENERATOR_FUEL, player.getMainHandItem()), "Blasting Generator has its own diamond energy recipe");
         distribute(helper, player, 1);
         helper.assertTrue(furnace.getItem(GENERATOR_FUEL).is(Items.DIAMOND) && stored(furnace) == 16
                 && player.getMainHandItem().isEmpty(), "diamond valid only under real Blasting Generator rules");
         furnace.setItem(GENERATOR_FUEL, ItemStack.EMPTY);
-        player.getInventory().items.set(0, new ItemStack(Items.COBBLESTONE, 16)); distribute(helper, player, 1);
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COBBLESTONE, 16)); distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 0 && player.getMainHandItem().getCount() == 16, "Blasting rejects cobblestone despite cooking recipe");
         furnace.setItem(AUGMENT_RED, ItemStack.EMPTY); tick(furnace);
         var heater = BuiltInRegistries.ITEM.stream().filter(item -> item instanceof ironfurnaces.items.ItemHeater).findFirst().orElseThrow();
-        player.getInventory().items.set(0, new ItemStack(heater));
-        helper.assertTrue(isItemFuel(player.getMainHandItem(), furnace.recipeType)
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(heater));
+        helper.assertTrue(isItemFuel(player.getMainHandItem(), furnace.recipeType, furnace.getLevel())
                 && !furnace.canPlaceItem(GENERATOR_FUEL, player.getMainHandItem()), "isItemFuel accepts Heater but Generator Container rejects it");
         distribute(helper, player, 1);
         helper.assertTrue(stored(furnace) == 0 && player.getMainHandItem().getCount() == 1, "no Heater insertion or processing fallback");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void changedStacksBetweenPlanAndWrite(GameTestHelper helper) {
         var furnace = generator(helper, 0, "iron");
         ItemStack source = new ItemStack(Items.COAL, 64);
@@ -286,7 +273,6 @@ public class GeneratorGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void everyRegisteredGeneratorTier(GameTestHelper helper) {
         int supported = 0;
         for (var block : BuiltInRegistries.BLOCK) {
@@ -294,7 +280,7 @@ public class GeneratorGameTests {
             var entity = entityBlock.newBlockEntity(absolute(helper, 0), block.defaultBlockState());
             if (!(entity instanceof BlockIronFurnaceTileBase)) continue;
             helper.setBlock(FIRST, block);
-            BlockIronFurnaceTileBase furnace = helper.getBlockEntity(FIRST);
+            BlockIronFurnaceTileBase furnace = helper.getBlockEntity(FIRST, BlockIronFurnaceTileBase.class);
             mode(furnace, "generator");
             var player = player(helper, new ItemStack(Items.COAL, 64));
             distribute(helper, player, 1);
@@ -305,7 +291,6 @@ public class GeneratorGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void generatorOperationGuard(GameTestHelper helper) {
         var furnace = generator(helper, 0, "gold");
         var player = player(helper, new ItemStack(Items.COAL, 64));
@@ -331,23 +316,22 @@ public class GeneratorGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void realGeneratorProducesEnergyWithoutOutputOrXp(GameTestHelper helper) {
         var furnace = generator(helper, 0, "diamond");
         var player = player(helper, new ItemStack(Items.COAL, 8));
         distribute(helper, player, 1);
-        helper.assertTrue(furnace.recipes.isEmpty() && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "inserting fuel grants no XP");
+        helper.assertTrue(furnace.recipes.isEmpty() && helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "inserting fuel grants no XP");
         tick(furnace);
         helper.assertTrue(stored(furnace) == 7 && furnace.getEnergy() > 0 && furnace.recipes.isEmpty(), "real fuel consumption produces FE only");
         collect(helper, player, 1); collect(helper, player, 1);
         helper.assertTrue(stored(furnace) == 7 && player.getInventory().isEmpty()
                 && Arrays.stream(FurnaceAccessRegistry.find(furnace).access().outputSlots(furnace)).allMatch(slot -> furnace.getItem(slot).isEmpty())
-                && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "no output, fuel collection or XP");
-        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+                && helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "no output, fuel collection or XP");
+        var recipe = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.SMELTING,
                 new net.minecraft.world.item.crafting.SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
         furnace.setRecipeUsed(recipe); // A historical cooking ledger must not be unlocked in Generator mode.
         FurnaceAccessRegistry.find(furnace).access().awardExperience(furnace, player);
-        helper.assertTrue(!furnace.recipes.isEmpty() && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "Generator never calls unlockRecipes");
+        helper.assertTrue(!furnace.recipes.isEmpty() && helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "Generator never calls unlockRecipes");
         helper.succeed();
     }
 }

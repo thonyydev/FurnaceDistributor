@@ -6,10 +6,9 @@ import com.thonyy.furnacedistributor.logic.*;
 import ironfurnaces.tileentity.furnaces.BlockIronFurnaceTileBase;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
@@ -17,23 +16,21 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import java.util.Arrays;
 
 import static com.thonyy.furnacedistributor.neoforge.tests.VanillaGameTests.*;
 
 /** Registered only when Iron is really loaded; tests use its actual entities, recipes and tick. */
-@PrefixGameTestTemplate(false)
 public class IronGameTests {
     static BlockIronFurnaceTileBase iron(GameTestHelper helper, int index, String name, boolean factory) {
-        var block = BuiltInRegistries.BLOCK.get(ResourceLocation.fromNamespaceAndPath("ironfurnaces", name + "_furnace"));
+        var block = BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("ironfurnaces", name + "_furnace"));
         helper.assertTrue(block != Blocks.AIR, "known Iron block " + name);
         helper.setBlock(FIRST.offset(index, 0, 0), block);
-        BlockIronFurnaceTileBase furnace = helper.getBlockEntity(FIRST.offset(index, 0, 0));
+        BlockIronFurnaceTileBase furnace = helper.getBlockEntity(FIRST.offset(index, 0, 0), BlockIronFurnaceTileBase.class);
         if (factory) {
-            furnace.setItem(BlockIronFurnaceTileBase.AUGMENT_BLUE, new ItemStack(BuiltInRegistries.ITEM.get(
-                    ResourceLocation.fromNamespaceAndPath("ironfurnaces", "augment_factory"))));
+            furnace.setItem(BlockIronFurnaceTileBase.AUGMENT_BLUE, new ItemStack(BuiltInRegistries.ITEM.getValue(
+                    Identifier.fromNamespaceAndPath("ironfurnaces", "augment_factory"))));
             tick(furnace);
             helper.assertTrue(furnace.isFactory(), "actual Factory Augment activates mode");
             furnace.furnaceSettings.autoSplit = 0;
@@ -47,7 +44,6 @@ public class IronGameTests {
         return Arrays.stream(BlockIronFurnaceTileBase.FACTORY_INPUT).map(slot -> furnace.getItem(slot).getCount()).sum();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void normal128AndMixed256(GameTestHelper helper) {
         var a = iron(helper, 0, "iron", false);
         var b = iron(helper, 1, "gold", false);
@@ -60,7 +56,7 @@ public class IronGameTests {
         var v2 = furnace(helper, 1, Blocks.FURNACE);
         c.clearContent();
         var d = iron(helper, 3, "netherite", false);
-        player.getInventory().items.set(0, new ItemStack(Items.COBBLESTONE, 256));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COBBLESTONE, 256));
         distribute(helper, player, 4);
         helper.assertTrue(v1.getItem(0).getCount() == 64 && v2.getItem(0).getCount() == 64
                 && c.getItem(0).getCount() == 64 && d.getItem(0).getCount() == 64 && player.getMainHandItem().isEmpty(),
@@ -70,7 +66,6 @@ public class IronGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void normalOccupiedComponentsAndAugments(GameTestHelper helper) {
         var a = iron(helper, 0, "iron", false);
         var b = iron(helper, 1, "gold", false);
@@ -83,24 +78,23 @@ public class IronGameTests {
         a.clearContent(); b.clearContent();
         ItemStack named = new ItemStack(Items.COBBLESTONE, 10);
         named.set(DataComponents.CUSTOM_NAME, Component.literal("exact data"));
-        player.getInventory().items.set(0, named);
+        player.getInventory().getNonEquipmentItems().set(0, named);
         distribute(helper, player, 2);
         helper.assertTrue(a.getItem(0).getCount() == 5 && b.getItem(0).getCount() == 5 && a.getItem(0).has(DataComponents.CUSTOM_NAME),
                 "Iron input components preserved");
         a.clearContent(); b.clearContent();
-        a.setItem(BlockIronFurnaceTileBase.AUGMENT_RED, new ItemStack(BuiltInRegistries.ITEM.get(
-                ResourceLocation.fromNamespaceAndPath("ironfurnaces", "augment_blasting"))));
+        a.setItem(BlockIronFurnaceTileBase.AUGMENT_RED, new ItemStack(BuiltInRegistries.ITEM.getValue(
+                Identifier.fromNamespaceAndPath("ironfurnaces", "augment_blasting"))));
         tick(a);
-        player.getInventory().items.set(0, new ItemStack(Items.COBBLESTONE, 10));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COBBLESTONE, 10));
         distribute(helper, player, 2);
         helper.assertTrue(a.getItem(0).isEmpty() && b.getItem(0).getCount() == 10, "blasting augment restricts recipes");
-        player.getInventory().items.set(0, new ItemStack(Items.DIAMOND, 10));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.DIAMOND, 10));
         distribute(helper, player, 2);
         helper.assertTrue(player.getMainHandItem().getCount() == 10, "Iron rejects invalid recipe");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void factoryActiveTiersAndCapacity(GameTestHelper helper) {
         for (int i = 0; i < 3; i++) {
             var furnace = iron(helper, i, new String[]{"copper", "gold", "diamond"}[i], true);
@@ -120,7 +114,6 @@ public class IronGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void factoryPartialAndGlobalBalance(GameTestHelper helper) {
         var a = iron(helper, 0, "diamond", true);
         var b = iron(helper, 1, "diamond", true);
@@ -139,7 +132,6 @@ public class IronGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void factoryAndVanillaBalance(GameTestHelper helper) {
         var a = iron(helper, 0, "diamond", true);
         var b = furnace(helper, 1, Blocks.FURNACE);
@@ -152,17 +144,16 @@ public class IronGameTests {
         b.clearContent(); c.clearContent();
         ServerConfig.get().smartDistribution = false;
         b.setItem(0, new ItemStack(Items.IRON_ORE, 1));
-        player.getInventory().items.set(0, new ItemStack(Items.COBBLESTONE, 60));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COBBLESTONE, 60));
         distribute(helper, player, 3);
         helper.assertTrue(inputCount(a) == 20 && c.getItem(0).getCount() == 20 && player.getMainHandItem().getCount() == 20,
                 "legacy non-smart distribution preserved");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void factoryOutputsFullPartialComponentsAndXp(GameTestHelper helper) {
         var furnace = iron(helper, 0, "diamond", true);
-        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+        var recipe = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.SMELTING,
                 new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
         furnace.setRecipeUsed(recipe);
         int[] outputs = FurnaceAccessRegistry.find(furnace).access().outputSlots(furnace);
@@ -170,31 +161,30 @@ public class IronGameTests {
         named.set(DataComponents.CUSTOM_NAME, Component.literal("factory output"));
         for (int slot : outputs) furnace.setItem(slot, named.copy());
         ServerPlayer player = player(helper, ItemStack.EMPTY);
-        for (int i = 0; i < player.getInventory().items.size(); i++) player.getInventory().items.set(i, new ItemStack(Items.STONE, 64));
+        for (int i = 0; i < player.getInventory().getNonEquipmentItems().size(); i++) player.getInventory().getNonEquipmentItems().set(i, new ItemStack(Items.STONE, 64));
         collect(helper, player, 1);
         helper.assertTrue(furnace.recipes.size() == 1 && Arrays.stream(outputs).map(slot -> furnace.getItem(slot).getCount()).sum() == 70,
                 "case 10: full inventory leaves items and XP intact");
-        player.getInventory().items.set(1, named.copyWithCount(60));
+        player.getInventory().getNonEquipmentItems().set(1, named.copyWithCount(60));
         collect(helper, player, 1);
         helper.assertTrue(furnace.getItem(outputs[0]).getCount() == 6 && furnace.recipes.isEmpty(), "partial output clears XP once");
-        helper.assertTrue(!helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "Iron XP delivered");
-        int orbs = helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).size();
-        player.getInventory().items.set(1, ItemStack.EMPTY);
-        player.getInventory().items.set(2, ItemStack.EMPTY);
+        helper.assertTrue(!helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).isEmpty(), "Iron XP delivered");
+        int orbs = helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).size();
+        player.getInventory().getNonEquipmentItems().set(1, ItemStack.EMPTY);
+        player.getInventory().getNonEquipmentItems().set(2, ItemStack.EMPTY);
         collect(helper, player, 1);
         collect(helper, player, 1);
         helper.assertTrue(Arrays.stream(outputs).allMatch(slot -> furnace.getItem(slot).isEmpty())
-                && player.getInventory().items.get(1).getCount() + player.getInventory().items.get(2).getCount() == 66,
+                && player.getInventory().getNonEquipmentItems().get(1).getCount() + player.getInventory().getNonEquipmentItems().get(2).getCount() == 66,
                 "case 9: all outputs collected, including inactive normal output");
-        helper.assertTrue(player.getInventory().items.get(1).has(DataComponents.CUSTOM_NAME)
-                && helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).size() == orbs, "preserve data; no duplicate XP");
+        helper.assertTrue(player.getInventory().getNonEquipmentItems().get(1).has(DataComponents.CUSTOM_NAME)
+                && helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).size() == orbs, "preserve data; no duplicate XP");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void xpDisabledAndGeneratorExcluded(GameTestHelper helper) {
         var furnace = iron(helper, 0, "iron", false);
-        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+        var recipe = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.SMELTING,
                 new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
         furnace.setRecipeUsed(recipe);
         furnace.setItem(BlockIronFurnaceTileBase.OUTPUT, new ItemStack(Items.IRON_INGOT, 2));
@@ -202,17 +192,16 @@ public class IronGameTests {
         ServerConfig.get().collectExperience = false;
         collect(helper, player, 1);
         helper.assertTrue(furnace.getItem(2).isEmpty() && furnace.recipes.size() == 1, "disabled XP preserves ledger");
-        furnace.setItem(BlockIronFurnaceTileBase.AUGMENT_BLUE, new ItemStack(BuiltInRegistries.ITEM.get(
-                ResourceLocation.fromNamespaceAndPath("ironfurnaces", "augment_generator"))));
+        furnace.setItem(BlockIronFurnaceTileBase.AUGMENT_BLUE, new ItemStack(BuiltInRegistries.ITEM.getValue(
+                Identifier.fromNamespaceAndPath("ironfurnaces", "augment_generator"))));
         tick(furnace);
         helper.assertTrue(furnace.isGenerator(), "generator mode active");
-        player.getInventory().items.set(0, new ItemStack(Items.COBBLESTONE, 16));
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COBBLESTONE, 16));
         distribute(helper, player, 1);
         helper.assertTrue(player.getMainHandItem().getCount() == 16 && furnace.getItem(6).isEmpty(), "generator/augment slots untouched");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void factoryProcessesRealRecipesAndXp(GameTestHelper helper) {
         var furnace = iron(helper, 0, "diamond", true);
         ServerPlayer player = player(helper, new ItemStack(Items.RAW_IRON, 6));
@@ -225,13 +214,12 @@ public class IronGameTests {
                     "real recipe output pairs match adapter");
         }
         collect(helper, player, 1);
-        helper.assertTrue(player.getInventory().items.stream().filter(stack -> stack.is(Items.IRON_INGOT)).mapToInt(ItemStack::getCount).sum() == 6
-                && furnace.recipes.isEmpty() && !helper.getEntities(EntityType.EXPERIENCE_ORB, FIRST, 8).isEmpty(),
+        helper.assertTrue(player.getInventory().getNonEquipmentItems().stream().filter(stack -> stack.is(Items.IRON_INGOT)).mapToInt(ItemStack::getCount).sum() == 6
+                && furnace.recipes.isEmpty() && !helper.getEntities(net.minecraft.world.entity.EntityTypes.EXPERIENCE_ORB, FIRST, 8).isEmpty(),
                 "end-to-end Factory processing, collection and XP");
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void everyRegisteredFurnaceTier(GameTestHelper helper) {
         int supported = 0;
         for (var block : BuiltInRegistries.BLOCK) {
@@ -247,13 +235,10 @@ public class IronGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = "empty", templateNamespace = NAMESPACE)
     public static void lockedSecondFurnacePreservesFactoryInputsOutputsAndXp(GameTestHelper helper) {
         var factory = iron(helper, 0, "diamond", true);
         var locked = furnace(helper, 1, Blocks.FURNACE);
-        var tag = new net.minecraft.nbt.CompoundTag();
-        tag.putString("Lock", "key required");
-        locked.loadWithComponents(tag, helper.getLevel().registryAccess());
+        lock(helper, locked);
         var player = player(helper, new ItemStack(Items.RAW_IRON, 16));
         distribute(helper, player, 2);
         helper.assertTrue(inputCount(factory) == 0 && locked.getItem(0).isEmpty()
@@ -261,7 +246,7 @@ public class IronGameTests {
         int[] outputs = FurnaceAccessRegistry.find(factory).access().outputSlots(factory);
         for (int slot : outputs) factory.setItem(slot, new ItemStack(Items.IRON_INGOT, 3));
         locked.setItem(2, new ItemStack(Items.IRON_INGOT, 5));
-        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+        var recipe = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.SMELTING,
                 new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
         factory.setRecipeUsed(recipe);
         factory.setRecipeUsed(recipe);
@@ -269,7 +254,7 @@ public class IronGameTests {
         helper.assertTrue(Arrays.stream(outputs).allMatch(slot -> factory.getItem(slot).getCount() == 3)
                 && locked.getItem(2).getCount() == 5 && factory.recipes.values().intStream().sum() == 2
                 && player.getMainHandItem().getCount() == 16
-                && player.getInventory().items.stream().noneMatch(stack -> stack.is(Items.IRON_INGOT)),
+                && player.getInventory().getNonEquipmentItems().stream().noneMatch(stack -> stack.is(Items.IRON_INGOT)),
                 "second lock preserves every Factory output, player inventory and XP ledger");
         helper.succeed();
     }
