@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "Предметов осталось в руке: %s. Некоторые печи не смогли их принять.",
   "message.furnacedistributor.config_save_failed": "Настройки не сохранены. Изменения могут быть потеряны после перезапуска; проверьте журнал.",
   "hud.furnacedistributor.select_second": "Выберите вторую печь клавишей %s",
-  "hud.furnacedistributor.estimate": "Печей: %s · предметов в руке: %s (оценка)",
+  "hud.furnacedistributor.estimate": "Печей: %s · предметов в руке: %s (количество определяет сервер)",
   "hud.furnacedistributor.furnaces": "Печей в области: %s",
   "hud.furnacedistributor.cancel": "%s: отменить и удалить сохранённую область",
   "hud.furnacedistributor.saved_area": "Сохранённая область: %s + %s для распределения, %s для сбора",

@@ -55,6 +55,7 @@ public final class OperationGuard {
         for (BlockPos pos : scan.positions()) {
             FurnaceTarget furnace = FurnaceAccessRegistry.find(player.level().getBlockEntity(pos));
             if (furnace != null) {
+                // shortcut: mayInteract covers spawn/border, add read-only authorization for the installed claim provider.
                 if (!player.level().mayInteract(player, pos)) {
                     error(player, "area_protected");
                     return null;

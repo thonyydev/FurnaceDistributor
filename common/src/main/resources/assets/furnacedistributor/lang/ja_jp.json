@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "一部のかまどが受け付けられなかったため、アイテム %s 個が手元に残っています。",
   "message.furnacedistributor.config_save_failed": "設定を保存できませんでした。再起動すると変更が失われる可能性があります。ログを確認してください。",
   "hud.furnacedistributor.select_second": "%s で2つ目のかまどを選択",
-  "hud.furnacedistributor.estimate": "かまど %s 台 · 手持ちアイテム %s 個（推定）",
+  "hud.furnacedistributor.estimate": "かまど %s 台 · 手持ちアイテム %s 個（数量はサーバーが決定）",
   "hud.furnacedistributor.furnaces": "範囲内のかまど：%s 台",
   "hud.furnacedistributor.cancel": "%s：キャンセルして保存範囲を消去",
   "hud.furnacedistributor.saved_area": "保存範囲：%s + %s で分配、%s で回収",

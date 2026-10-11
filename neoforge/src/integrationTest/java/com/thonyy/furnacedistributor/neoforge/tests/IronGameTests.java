@@ -246,4 +246,31 @@ public class IronGameTests {
         helper.assertTrue(supported >= 10, "all normal/special Iron tiers found: " + supported);
         helper.succeed();
     }
+
+    @GameTest(template = "empty", templateNamespace = NAMESPACE)
+    public static void lockedSecondFurnacePreservesFactoryInputsOutputsAndXp(GameTestHelper helper) {
+        var factory = iron(helper, 0, "diamond", true);
+        var locked = furnace(helper, 1, Blocks.FURNACE);
+        var tag = new net.minecraft.nbt.CompoundTag();
+        tag.putString("Lock", "key required");
+        locked.loadWithComponents(tag, helper.getLevel().registryAccess());
+        var player = player(helper, new ItemStack(Items.RAW_IRON, 16));
+        distribute(helper, player, 2);
+        helper.assertTrue(inputCount(factory) == 0 && locked.getItem(0).isEmpty()
+                && player.getMainHandItem().getCount() == 16, "second lock prevents earlier Factory insertion");
+        int[] outputs = FurnaceAccessRegistry.find(factory).access().outputSlots(factory);
+        for (int slot : outputs) factory.setItem(slot, new ItemStack(Items.IRON_INGOT, 3));
+        locked.setItem(2, new ItemStack(Items.IRON_INGOT, 5));
+        var recipe = helper.getLevel().getRecipeManager().getRecipeFor(RecipeType.SMELTING,
+                new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
+        factory.setRecipeUsed(recipe);
+        factory.setRecipeUsed(recipe);
+        collect(helper, player, 2);
+        helper.assertTrue(Arrays.stream(outputs).allMatch(slot -> factory.getItem(slot).getCount() == 3)
+                && locked.getItem(2).getCount() == 5 && factory.recipes.values().intStream().sum() == 2
+                && player.getMainHandItem().getCount() == 16
+                && player.getInventory().items.stream().noneMatch(stack -> stack.is(Items.IRON_INGOT)),
+                "second lock preserves every Factory output, player inventory and XP ledger");
+        helper.succeed();
+    }
 }

@@ -36,7 +36,7 @@
   "message.furnacedistributor.distribution_partial": "Przedmioty pozostałe w ręce: %s. Niektóre piece nie mogły ich przyjąć.",
   "message.furnacedistributor.config_save_failed": "Nie zapisano ustawień. Zmiany mogą zostać utracone po ponownym uruchomieniu; sprawdź dziennik.",
   "hud.furnacedistributor.select_second": "Wybierz drugi piec klawiszem %s",
-  "hud.furnacedistributor.estimate": "Piece: %s · przedmioty w ręce: %s (szacunek)",
+  "hud.furnacedistributor.estimate": "Piece: %s · przedmioty w ręce: %s (ilości ustala serwer)",
   "hud.furnacedistributor.furnaces": "Piece w obszarze: %s",
   "hud.furnacedistributor.cancel": "%s: anuluj i usuń zapisany obszar",
   "hud.furnacedistributor.saved_area": "Zapisany obszar: %s + %s, aby rozdzielić; %s, aby zebrać",
