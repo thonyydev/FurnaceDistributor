@@ -1,10 +1,12 @@
 # Furnace Distributor
 
+**Minecraft 26.2 · Fabric & NeoForge · Java 25**
+
 **Furnace Distributor** is a Minecraft mod that makes managing multiple furnaces faster, easier, and much less repetitive.
 
 Instead of opening every furnace one by one, select an area and let the mod automatically distribute items or collect finished outputs from all supported furnaces inside it.
 
-The mod supports **Fabric** and **NeoForge**, with optional **Iron Furnaces integration on NeoForge**.
+This branch targets **Minecraft 26.2**, supporting **Fabric** and **NeoForge**, with optional **Iron Furnaces integration on NeoForge**. For older Minecraft versions, use the corresponding version branch or release.
 
 ## Features
 
@@ -238,43 +240,44 @@ Furnace Distributor includes translations for **12 languages**:
 
 ## Requirements
 
-This branch targets **Minecraft 26.2** and **Java 25**. See
-[PORT-26.2.md](PORT-26.2.md) for exact dependency versions, port details and validation results.
+This version of Furnace Distributor targets **Minecraft Java Edition 26.2** and **Java 25**.
 
-### Fabric
+The following versions were used to build and validate the 26.2 port:
 
-Required:
+| Component | Fabric | NeoForge |
+| --- | --- | --- |
+| Minecraft | `26.2` | `26.2` |
+| Java | `25` | `25` |
+| Mod loader | Fabric Loader `0.19.5` | NeoForge `26.2.0.90` |
+| Architectury API | `21.1.12` | `21.1.12` |
+| Fabric API | `0.161.0+26.2` | Not applicable |
 
-- Fabric Loader
-- Fabric API
-- Architectury API
+**Optional integrations:**
 
-Optional:
+- **Fabric:** Mod Menu `20.0.3` provides access to the settings screen from the mod list.
+- **NeoForge:** [Astryxion's Iron Furnaces 1.0.0 for Minecraft 26.2](https://www.curseforge.com/minecraft/mc-mods/iron-furnaces-fabric-neoforge/files/8573189).
 
-- Mod Menu
-
-### NeoForge
-
-Required:
-
-- NeoForge
-- Architectury API
-
-Optional:
-
-- Iron Furnaces
-
-**Iron Furnaces is not required.** Furnace Distributor works normally without it, and Iron Furnaces integration is available only on NeoForge.
+Iron Furnaces is **not required**, and support for other forks is not guaranteed. Iron Furnaces integration is **NeoForge-only**.
 
 ## Installation
 
-1. Install **Fabric** or **NeoForge** for a supported Minecraft version.
-2. Install **Architectury API**.
-3. If using Fabric, install **Fabric API**.
-4. Optionally install **Iron Furnaces** on NeoForge or **Mod Menu** on Fabric.
-5. Download the Furnace Distributor `.jar` matching your Minecraft version and mod loader.
-6. Place the required `.jar` files in Minecraft's `mods` folder.
-7. Launch Minecraft.
+1. Use **Minecraft Java Edition 26.2** with **Java 25**.
+2. Install the matching **Fabric** or **NeoForge** loader.
+3. Install **Architectury API** for your loader.
+4. If using Fabric, also install **Fabric API**.
+5. Download the Furnace Distributor JAR for your loader and Minecraft 26.2.
+6. Optionally add **Mod Menu** on Fabric or the supported **Iron Furnaces** version on NeoForge.
+7. Place the mod and its required dependencies in the Minecraft instance's `mods` folder.
+8. Launch Minecraft.
+
+**Example release filenames (version 3.0.0):**
+
+```text
+furnacedistributor-fabric-3.0.0+26.2.jar
+furnacedistributor-neoforge-3.0.0+26.2.jar
+```
+
+Do not install both loader variants in the same instance. Development (`-dev`) and source (`-sources`) JARs are not intended for normal installation.
 
 ## Building From Source
 
@@ -300,7 +303,14 @@ cd FurnaceDistributor
 ./gradlew build
 ```
 
-Generated Fabric and NeoForge JARs are available in their respective `build/libs` directories.
+Distributable JARs are generated in:
+
+```text
+fabric/build/libs/furnacedistributor-fabric-3.0.0+26.2.jar
+neoforge/build/libs/furnacedistributor-neoforge-3.0.0+26.2.jar
+```
+
+The filenames are derived from the mod version and Minecraft version in the Gradle properties. If you change `mod_version` or `minecraft_version`, the output filenames change accordingly.
 
 ## Reporting Issues
 
