@@ -1,75 +1,61 @@
 # Furnace Distributor
 
-**Minecraft 26.2 · Fabric & NeoForge · Java 25**
+**Spend less time managing furnaces and more time playing Minecraft.**
 
-**Furnace Distributor** is a Minecraft mod that makes managing multiple furnaces faster, easier, and much less repetitive.
+[![Version](https://img.shields.io/badge/Version-4.0.0-2374AB?style=flat-square)](https://github.com/thonyydev/FurnaceDistributor/releases)
+![Minecraft](https://img.shields.io/badge/Minecraft-26.2-62B47A?style=flat-square)
+![Loaders](https://img.shields.io/badge/Loaders-Fabric%20%7C%20NeoForge-7E64A5?style=flat-square)
+![Java](https://img.shields.io/badge/Java-25-DB7931?style=flat-square)
+![Languages](https://img.shields.io/badge/Languages-12-39988B?style=flat-square)
+[![License](https://img.shields.io/badge/License-MIT-555555?style=flat-square)](LICENSE)
 
-Instead of opening every furnace one by one, select an area and let the mod automatically distribute items or collect finished outputs from all supported furnaces inside it.
+[![CurseForge](https://img.shields.io/badge/Download-CurseForge-F16436?style=for-the-badge&logo=curseforge&logoColor=white)](https://www.curseforge.com/minecraft/mc-mods/furnace-distributor)
+[![GitHub Releases](https://img.shields.io/badge/Download-GitHub%20Releases-24292F?style=for-the-badge&logo=github&logoColor=white)](https://github.com/thonyydev/FurnaceDistributor/releases)
 
-This branch targets **Minecraft 26.2**, supporting **Fabric** and **NeoForge**, with optional **Iron Furnaces integration on NeoForge**. For older Minecraft versions, use the corresponding version branch or release.
+**Furnace Distributor** is a quality-of-life Minecraft mod that makes managing multiple furnaces faster, easier, and much less repetitive. Instead of opening every furnace one by one, select an area and let the mod distribute items or collect finished outputs from all supported furnaces inside it.
+
+It supports **Fabric** and **NeoForge**, with optional **Iron Furnaces integration on NeoForge**.
+
+> **This README documents Furnace Distributor 4.0.0 for Minecraft 26.2.** For older Minecraft versions, use the matching release or version branch.
+
+## See It in Action
+
+Four quick demonstrations of the main features. All animations are hosted on CurseForge, so no video files need to be stored in the Git repository.
+
+| **Distribute Items** | **Bulk Inventory Distribution · NEW in 4.0.0** |
+|:---:|:---:|
+| ![Selecting a furnace area and distributing items](https://media.forgecdn.net/attachments/2041/372/distributeitems-webp.webp) | ![Selecting multiple inventory stacks for bulk distribution](https://media.forgecdn.net/attachments/2041/374/bulkdistribution-webp.webp) |
+| **Reuse a Saved Area** | **Collect Finished Items** |
+| ![Reusing a previously selected furnace area](https://media.forgecdn.net/attachments/2041/373/distributesavedarea-webp.webp) | ![Collecting finished items directly into the player inventory](https://media.forgecdn.net/attachments/2041/375/collectitems-webp.webp) |
+
+> **About collection:** Press `C` to collect finished outputs from the saved area. Items transfer directly into your inventory rather than flying through the world, so the change happens almost instantly in the demonstration.
+
+## What's New in 4.0.0
+
+- **Bulk Inventory Distribution** — Select multiple inventory stacks, including different materials and fuels, and distribute them in one operation using `B`.
+- **Select Matching** — Quickly include equivalent stacks in the Bulk Distribution screen.
+- **Redesigned HUD** — A more compact layout with smoother animations, clearer counts, and better readability.
+- **Better Feedback** — See how many items were transferred, how many furnaces received them, and why others were skipped.
+- **Contextual Tips** — Helpful prompts introduce useful shortcuts, including area collection with `C`.
+- **More Control** — Configure UI animations and contextual tips; server owners can manage bulk distribution limits.
+- **Quality-of-Life Fixes** — Improvements to selection handling, item transfers, settings, and optional Iron Furnaces compatibility.
+
+See the full [changelog](CHANGELOG.md) for details.
 
 ## Features
 
-- Distribute items across multiple furnaces at once
-- Collect finished outputs from several furnaces
-- Select furnace areas directly in the world
-- Quickly reuse previously selected areas
-- Use a dedicated collection selection mode
-- See contextual HUD information and visual furnace outlines
-- Get action bar feedback without unnecessary chat messages
-- Balance distribution based on actual available capacity
-- Support vanilla Furnaces, Blast Furnaces, and Smokers
-- Optionally support Iron Furnaces on NeoForge
-- Work with Iron Furnaces in Normal, Factory, and Generator modes
-- Handle multiple Factory input and output slots
-- Distribute compatible fuel to furnaces using the Generator Augment
-- Validate recipes, fuels, item compatibility, and furnace modes
-- Collect stored experience while preserving vanilla furnace behavior
-- Safely handle partially filled furnaces and items that cannot be inserted
-- Customize keybindings, gameplay settings, and visual options
-- Play in singleplayer or multiplayer
-- Use built-in translations for **12 languages**
-
-## Supported Furnace Types
-
-### Vanilla
-
-Furnace Distributor supports:
-
-- Furnace
-- Blast Furnace
-- Smoker
-
-The mod checks whether an item has a valid recipe for each furnace type before inserting it.
-
-### Iron Furnaces (NeoForge)
-
-On **NeoForge**, Furnace Distributor also supports **Iron Furnaces** as an optional integration.
-
-Supported modes:
-
-- **Normal Mode** — distribute processable items and collect finished outputs.
-- **Factory Mode** — distribute items across multiple processing inputs and collect from multiple outputs.
-- **Generator Mode** — distribute compatible fuels to furnaces equipped with the Generator Augment.
-
-For Minecraft 26.2, the integration targets **Astryxion's Iron Furnaces 1.0.0 for NeoForge 26.2**
-([CurseForge file 8573189](https://www.curseforge.com/minecraft/mc-mods/iron-furnaces-fabric-neoforge/files/8573189)).
-Its actual Normal, Factory and Generator APIs were inspected and tested. Other forks sharing the
-same mod ID are not assumed compatible. **Iron Furnaces is not required** to use Furnace Distributor.
-
-#### Factory Mode
-
-Factory furnaces may process items in multiple slots simultaneously. Furnace Distributor detects available input space, validates compatible items, and collects finished items from the appropriate output slots.
-
-For balancing purposes, a Factory furnace still counts as **one furnace**, rather than gaining extra weight simply because it has multiple processing slots.
-
-#### Generator Mode
-
-Furnaces equipped with the **Generator Augment** can receive fuel through Furnace Distributor.
-
-Fuel validation follows Iron Furnaces' own rules, including compatible fuels provided by other mods. The integration also accounts for fuels that leave a container behind after use.
-
-Generator Mode does not produce processing experience.
+- Distribute items and fuel across multiple furnaces at once.
+- Select **multiple inventory stacks** and distribute them in a single bulk operation.
+- Collect finished outputs from several furnaces, including stored experience when applicable.
+- Select areas directly in the world, **reuse saved areas**, or set up a separate collection area.
+- Use a contextual HUD, colored furnace outlines, and clear action bar messages without excessive chat spam.
+- Balance items according to **actual available capacity**, recipes, compatible fuels, and existing inventory contents.
+- Support vanilla **Furnaces, Blast Furnaces, and Smokers**.
+- Optionally support **Iron Furnaces on NeoForge**, including Normal, Factory, and Generator modes, multiple Factory inputs/outputs, and Generator fuel distribution.
+- Keep incompatible or excess items with the player, with safeguards against invalid transfers.
+- Customize keybindings, gameplay settings, and visual options.
+- Play in singleplayer or multiplayer, with server-side validation of gameplay actions.
+- Use built-in translations for **12 languages**.
 
 ## How It Works
 
@@ -79,58 +65,46 @@ Generator Mode does not produce processing experience.
 2. Look at the first furnace and press `R`.
 3. Look at another furnace and press `R` again.
 
-The two selected furnaces define the corners of an area. Furnace Distributor finds all supported furnaces inside that area and distributes the held items between them.
+The two selected furnaces define the corners of an area. Furnace Distributor finds the supported furnaces inside it and distributes your held items where they can be accepted.
 
-The distribution system considers:
+Distribution considers available space, existing items, stack limits, compatible items and fuels, valid recipes, furnace types, and any relevant furnace modes or upgrades. Items that cannot be inserted **remain with the player**.
 
-- Available space and existing items
-- Stack and inventory limits
-- Compatible items and fuels
-- Valid recipes and furnace types
-- The current furnace mode and applicable upgrades
+Before an operation, the mod rechecks target furnaces in case their contents, modes, or upgrades have changed since the preview.
 
-Any items that cannot be inserted **remain with the player**.
+### Bulk Inventory Distribution · New in 4.0.0
 
-Before inserting items, the mod rechecks target furnaces to help prevent invalid transfers if their inventory, mode, or upgrades change during an operation.
+1. Select the furnace area you want to use.
+2. Press `B` to open the **Bulk Distribution** screen.
+3. Choose individual inventory stacks or use **Select Matching** for equivalent stacks.
+4. Review your selection and confirm to distribute the items.
+
+You can distribute different materials and fuels together. Each item is inserted only where it is compatible and space is available. Items that cannot be transferred stay in your inventory. Opening or cancelling the screen does not move items.
 
 ### Smart Distribution
 
-Furnace Distributor aims to distribute items evenly while respecting the **actual capacity** of each furnace.
+Furnace Distributor aims to distribute items evenly while respecting each furnace's **actual capacity**. If one furnace has room for only 32 more items while another can accept 64, remaining items can be redirected to available space instead of being lost.
 
-For example, if one furnace has space for only 32 more items and another can accept 64, items that do not fit in the first furnace can be redirected to available space in the second.
+A Factory furnace with multiple processing slots still counts as **one furnace** during balancing.
 
-A Factory furnace with multiple processing slots is still treated as a single furnace during balancing.
+### Reusing a Saved Area
 
-### Reusing an Area
+After selecting an area, press **`Sneak + R`** to reuse it without selecting both corners again. This respects your configured Sneak key, even when it has been remapped.
 
-After selecting an area, press **`Sneak + R`** to reuse the previous distribution area without selecting both corners again.
+### Collecting Finished Items
 
-The shortcut uses your configured **Sneak** key, including when it has been remapped.
+Press **`C`** to collect finished outputs from the saved area. Collected items go **directly into your inventory**; they do not appear as flying item entities.
 
-This is especially useful for permanent smelting setups.
+To create a dedicated collection area:
 
-### Collecting Items
-
-Press **`C`** to collect finished items using the normal collection behavior for your selected area.
-
-#### Collection Selection Mode
-
-You can also choose a separate area specifically for collection:
-
-1. Sneak and look at a furnace.
-2. Press `C`.
-3. Look at another furnace.
-4. Press `C` again to confirm the area.
-
-To target a single furnace, confirm while looking at that same furnace again.
+1. Sneak while looking at a furnace and press `C`.
+2. Look at another furnace and press `C` again to confirm.
+3. To select just one furnace, confirm while looking at the same furnace again.
 
 Collection selections use **purple outlines** to distinguish them from distribution selections.
 
 ### Canceling a Selection
 
-Press **`X`** to cancel the current selection.
-
-Selections are also cleared when appropriate, such as when the player dies, disconnects, changes dimension, or the original selected furnace is no longer valid.
+Press `X` to cancel your current selection. Selections are also cleared when appropriate, such as when you die, disconnect, change dimensions, or the original selected furnace becomes invalid.
 
 ## Default Keybindings
 
@@ -138,219 +112,186 @@ Selections are also cleared when appropriate, such as when the player dies, disc
 | --- | --- |
 | Distribute / Select Area | `R` |
 | Reuse Previous Area | `Sneak + R` |
+| **Bulk Inventory Distribution** | **`B`** |
 | Collect Items | `C` |
 | Start Collection Selection | `Sneak + C` |
 | Cancel Selection | `X` |
 
-Keybindings can be changed in **Options → Controls → Key Binds → Furnace Distributor**.
+All keybindings can be changed in **Options → Controls → Key Binds → Furnace Distributor**.
+
+## Supported Furnace Types
+
+### Vanilla
+
+- Furnace
+- Blast Furnace
+- Smoker
+
+The mod checks whether an item has a valid recipe for the corresponding furnace type before inserting it.
+
+### Iron Furnaces · NeoForge Only
+
+On **NeoForge**, Furnace Distributor optionally integrates with compatible versions of **Iron Furnaces**:
+
+| Mode | Supported behavior |
+| --- | --- |
+| **Normal** | Distribute processable items and collect finished outputs. |
+| **Factory** | Distribute to multiple input slots and collect from multiple output slots. |
+| **Generator** | Distribute compatible fuel to furnaces equipped with the Generator Augment. |
+
+**Factory Mode:** The mod detects available input space, validates compatible items, and collects finished items from the appropriate outputs. Each Factory furnace counts as one furnace for balancing purposes, regardless of its number of processing slots.
+
+**Generator Mode:** Fuel validation follows Iron Furnaces' own rules, including compatible fuels added by other mods. The integration also accounts for fuels that leave containers behind after use. Generator Mode does not produce processing experience.
+
+**Iron Furnaces is optional** and is not required for vanilla furnace support. Compatibility with unrelated forks is not guaranteed.
 
 ## Visual Feedback
 
-### HUD
+### Contextual HUD
 
-The contextual HUD can show:
+The compact HUD provides selection mode, furnace counts, selection progress, temporary confirmations, and helpful control tips. Version 4.0.0 also adds smooth transitions, improved layout scaling, and options to disable tips or animations.
 
-- Current selection mode
-- Number of furnaces in the selection
-- Selection progress
-- Temporary confirmation information
+### Furnace Outlines
 
-### Outlines
+Selected furnaces are outlined in the world. **Purple** outlines distinguish collection selections from distribution selections. Rendering is optimized to avoid unnecessary drawing of off-screen previews.
 
-Selected furnaces are highlighted directly in the world. Collection selections use **purple outlines** to distinguish them from distribution selections.
+### Action Bar and Operation Results
 
-### Action Bar
-
-The action bar provides temporary feedback for successful operations, item counts, remaining items, cancellations, warnings, and errors, keeping the chat cleaner.
+Temporary messages summarize successful operations, transferred item counts, furnaces used or skipped, remaining items, cancellations, warnings, and errors — without unnecessarily filling the chat.
 
 ## Safe Item Handling
 
-Furnace Distributor includes protections designed to prevent:
+Furnace Distributor includes safeguards designed to prevent:
 
-- Inserting invalid items or incompatible fuels
-- Overwriting incompatible stacks
-- Exceeding stack sizes or furnace capacity
-- Removing more items from the player than were actually inserted
-- Item loss or duplication during normal distribution and collection
-- Loading distant, unloaded chunks merely to perform an operation
+- Inserting invalid items or incompatible fuels.
+- Overwriting incompatible stacks or exceeding stack and furnace limits.
+- Removing more items from a player than were actually inserted.
+- Item loss or duplication during normal distribution and collection.
+- Loading distant, unloaded chunks merely to perform an operation.
 
-Items that cannot be inserted stay with the player. The mod also revalidates furnaces when an operation is performed rather than relying only on a visual preview.
+Items that cannot be inserted stay with the player. Operations validate the current state of their target furnaces instead of relying only on an earlier visual preview.
 
 ## Experience Collection
 
-When collecting finished items, Furnace Distributor awards stored processing experience where appropriate.
+When collecting finished items, Furnace Distributor awards stored processing experience where appropriate:
 
-- **Vanilla furnaces** preserve their normal Minecraft experience and recipe handling.
-- **Supported Iron Furnaces** provide stored processing experience when collecting their outputs.
-- **Generator Mode** does not grant processing experience.
+- **Vanilla furnaces:** Preserve normal Minecraft experience and recipe handling.
+- **Supported Iron Furnaces:** Provide stored processing experience when collecting their outputs.
+- **Generator Mode:** Does not grant processing experience.
 
 Experience is awarded only when the corresponding collection actually occurs.
 
 ## Configuration
 
-Furnace Distributor provides configurable gameplay and visual settings, including:
+Gameplay and visual settings include configurable keybindings, validated values and defaults, recovery from invalid configuration files, and preservation of existing preferences whenever possible.
 
-- Validated configuration values and sensible defaults
-- Recovery from invalid configuration files
-- Preservation of existing settings where possible
-- Separate gameplay and visual options
+- **Fabric:** Install **Mod Menu** (optional) to access the configuration screen through the mod list.
+- **NeoForge:** Open the configuration screen directly from the mod list.
 
-### Fabric
-
-When **Mod Menu** is installed, the configuration screen is available from the mod list. **Mod Menu is optional**.
-
-### NeoForge
-
-The configuration screen is accessible directly from the NeoForge mod list.
+The 4.0.0 interface also offers **Show Contextual Tips** and **Enable UI Animations** options. Server owners can configure bulk distribution availability and selection limits.
 
 ## Multiplayer
 
-Furnace Distributor supports multiplayer. Gameplay-changing operations are validated by the server, including checks for:
+Furnace Distributor supports multiplayer. Gameplay-changing actions are validated by the server, including checks for player distance and state, selected area size, furnace count, loaded chunks, furnace accessibility, and valid item transfers.
 
-- Player distance and state
-- Selected area size and furnace count
-- Loaded chunks
-- Furnace accessibility
-- Valid item transfers
-
-The mod does **not** force-load unloaded chunks to perform furnace operations. HUD elements, outlines, keybindings, and configuration screens remain client-side.
+The mod does **not** force-load unloaded chunks to perform operations. HUD elements, outlines, keybindings, and configuration screens remain client-side.
 
 ## Performance
 
-The mod avoids rescanning selected furnace areas every rendered frame. Visual previews reuse recent results briefly, while real operations are validated again when executed.
-
-Search and selection limits help prevent excessively large scans and unnecessary chunk processing.
+The mod avoids rescanning selected furnace areas on every rendered frame. Visual previews briefly reuse recent results, while actual operations are validated again when executed. Search, selection, and preview limits help prevent unnecessary processing and visual clutter.
 
 ## Languages
 
-Furnace Distributor includes translations for **12 languages**:
+Built-in translations are available for **12 languages**:
 
-- 🇺🇸 English
-- 🇧🇷 Português do Brasil
-- 🇪🇸 Español
-- 🇫🇷 Français
-- 🇩🇪 Deutsch
-- 🇮🇹 Italiano
-- 🇵🇱 Polski
-- 🇷🇺 Русский
-- 🇨🇳 简体中文
-- 🇹🇼 繁體中文
-- 🇯🇵 日本語
-- 🇰🇷 한국어
+| | | |
+| --- | --- | --- |
+| 🇺🇸 English | 🇧🇷 Português do Brasil | 🇪🇸 Español |
+| 🇫🇷 Français | 🇩🇪 Deutsch | 🇮🇹 Italiano |
+| 🇵🇱 Polski | 🇷🇺 Русский | 🇨🇳 简体中文 |
+| 🇹🇼 繁體中文 | 🇯🇵 日本語 | 🇰🇷 한국어 |
 
 ## Requirements
 
-This version of Furnace Distributor targets **Minecraft Java Edition 26.2** and **Java 25**.
+The **4.0.0 release for Minecraft 26.2** requires **Java 25**.
 
-The following versions were used to build and validate the 26.2 port:
-
-| Component | Fabric | NeoForge |
+| Dependency | Fabric | NeoForge |
 | --- | --- | --- |
 | Minecraft | `26.2` | `26.2` |
 | Java | `25` | `25` |
-| Mod loader | Fabric Loader `0.19.5` | NeoForge `26.2.0.90` |
-| Architectury API | `21.1.12` | `21.1.12` |
-| Fabric API | `0.161.0+26.2` | Not applicable |
+| Mod loader | Fabric Loader | NeoForge |
+| Architectury API | Required | Required |
+| Fabric API | Required | — |
+| Mod Menu | Optional | — |
+| Iron Furnaces | — | Optional, compatible 26.2 build |
 
-**Optional integrations:**
-
-- **Fabric:** Mod Menu `20.0.3` provides access to the settings screen from the mod list.
-- **NeoForge:** [Astryxion's Iron Furnaces 1.0.0 for Minecraft 26.2](https://www.curseforge.com/minecraft/mc-mods/iron-furnaces-fabric-neoforge/files/8573189).
-
-Iron Furnaces is **not required**, and support for other forks is not guaranteed. Iron Furnaces integration is **NeoForge-only**.
+Install the dependency versions matching your Minecraft version and loader. Iron Furnaces integration is available **only on NeoForge**.
 
 ## Installation
 
-1. Use **Minecraft Java Edition 26.2** with **Java 25**.
+1. Install **Minecraft Java Edition 26.2** and use **Java 25**.
 2. Install the matching **Fabric** or **NeoForge** loader.
-3. Install **Architectury API** for your loader.
-4. If using Fabric, also install **Fabric API**.
-5. Download the Furnace Distributor JAR for your loader and Minecraft 26.2.
-6. Optionally add **Mod Menu** on Fabric or the supported **Iron Furnaces** version on NeoForge.
-7. Place the mod and its required dependencies in the Minecraft instance's `mods` folder.
-8. Launch Minecraft.
+3. Install **Architectury API** for your loader, plus **Fabric API** if using Fabric.
+4. Download the corresponding Furnace Distributor JAR from [CurseForge](https://www.curseforge.com/minecraft/mc-mods/furnace-distributor) or [GitHub Releases](https://github.com/thonyydev/FurnaceDistributor/releases).
+5. Optionally add **Mod Menu** on Fabric or a compatible **Iron Furnaces** version on NeoForge.
+6. Place the mod and its required dependencies in your Minecraft instance's `mods` folder.
+7. Launch Minecraft.
 
-**Example release filenames (version 3.0.0):**
+Example release filenames:
 
 ```text
-furnacedistributor-fabric-3.0.0+26.2.jar
-furnacedistributor-neoforge-3.0.0+26.2.jar
+furnacedistributor-fabric-4.0.0+26.2.jar
+furnacedistributor-neoforge-4.0.0+26.2.jar
 ```
 
-Do not install both loader variants in the same instance. Development (`-dev`) and source (`-sources`) JARs are not intended for normal installation.
+Install **only the JAR for your loader**. Development (`-dev`) and source (`-sources`) JARs are not intended for normal installation.
 
 ## Building From Source
 
-Install JDK 25. Set `JAVA_HOME` to your installation if necessary; machine-specific
-Java paths belong in your environment or user Gradle configuration, not this repository.
-
-Clone the repository:
+Install **JDK 25**. Configure `JAVA_HOME` if necessary. Machine-specific Java paths belong in your local environment or user Gradle configuration, not in this repository.
 
 ```bash
 git clone https://github.com/thonyydev/FurnaceDistributor.git
 cd FurnaceDistributor
+git switch 26.2
 ```
 
-### Windows
+**Windows (PowerShell):**
 
 ```powershell
 .\gradlew.bat clean build
 ```
 
-### Linux / macOS
+**Linux / macOS:**
 
 ```bash
-./gradlew build
+./gradlew clean build
 ```
 
-Distributable JARs are generated in:
-
-```text
-fabric/build/libs/furnacedistributor-fabric-3.0.0+26.2.jar
-neoforge/build/libs/furnacedistributor-neoforge-3.0.0+26.2.jar
-```
-
-The filenames are derived from the mod version and Minecraft version in the Gradle properties. If you change `mod_version` or `minecraft_version`, the output filenames change accordingly.
+Distributable JARs are generated in `fabric/build/libs/` and `neoforge/build/libs/`. The filenames depend on `mod_version` and `minecraft_version` in `gradle.properties`.
 
 ## Reporting Issues
 
-If you find a bug, [open an issue](https://github.com/thonyydev/FurnaceDistributor/issues) and include:
+Found a bug? [Open an issue](https://github.com/thonyydev/FurnaceDistributor/issues) and include:
 
-- Minecraft version
-- Furnace Distributor version
-- Mod loader and version
-- Singleplayer or multiplayer
-- Steps to reproduce the problem
-- Relevant logs or crash reports
+- Minecraft version and Furnace Distributor version.
+- Mod loader and version.
+- Singleplayer or multiplayer.
+- Steps to reproduce the problem.
+- Relevant logs or crash reports.
 
-For distribution or collection problems, also provide:
-
-- The item or fuel and its quantity
-- Furnace types and modes (Normal, Factory, or Generator)
-- Any Iron Furnaces augments or upgrades in use
-- Items already inside the furnaces
-- The selected area
-- Other relevant mods, especially those adding fuels or recipes
+For distribution or collection issues, also mention the item/fuel and quantity, furnace types and modes, any Iron Furnaces upgrades, existing furnace contents, selected area, and other relevant mods.
 
 ## Contributing
 
-Contributions are welcome, including:
-
-- Bug fixes
-- Translations
-- Performance improvements
-- Mod compatibility improvements
-- Documentation
-- Quality-of-life features
-
-For larger changes, consider opening an issue before starting implementation.
+Contributions are welcome: bug fixes, translations, performance improvements, mod compatibility, documentation, and quality-of-life features. For larger changes, consider [opening an issue](https://github.com/thonyydev/FurnaceDistributor/issues) before starting implementation.
 
 ## License
 
-Furnace Distributor is licensed under the **MIT License**. See [LICENSE](LICENSE) for more information.
+Furnace Distributor is licensed under the **MIT License**. See [LICENSE](LICENSE).
 
 ---
 
-Make large furnace setups easier to manage and spend less time opening furnaces one by one.
+**Make large furnace setups easier to manage and spend less time opening furnaces one by one.**
 
 If Furnace Distributor helps your smelting setup, consider giving the project a ⭐ on GitHub!
