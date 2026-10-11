@@ -15,7 +15,9 @@ import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 public final class NeoForgeRenderEvents {
 
     @SubscribeEvent
-    public static void onExtractLevel(ExtractLevelRenderStateEvent event) { RenderHandler.extract(event.getCamera(), event.getRenderState()); }
+    public static void onExtractLevel(ExtractLevelRenderStateEvent event) {
+        RenderHandler.extract(event.getCamera(), event.getRenderState(), event.getFrustum());
+    }
 
     @SubscribeEvent
     public static void onSubmit(SubmitCustomGeometryEvent event) { RenderHandler.submit(event.getLevelRenderState(), event.getSubmitNodeCollector()); }

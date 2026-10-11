@@ -262,4 +262,108 @@ public class VanillaGameTests {
         }
         helper.succeed();
     }
+
+    public static void distributionSkippedSummary(GameTestHelper helper) {
+        var available = furnace(helper, 0, Blocks.FURNACE);
+        var incompatible = furnace(helper, 1, Blocks.SMOKER);
+        var full = furnace(helper, 2, Blocks.FURNACE);
+        full.setItem(0, new ItemStack(Items.COBBLESTONE, 64));
+        var player = player(helper, new ItemStack(Items.COBBLESTONE, 16));
+        distribute(helper, player, 3);
+        Component result = lastFeedback(player);
+        var quantities = (net.minecraft.network.chat.contents.TranslatableContents) result.getContents();
+        var reasons = (net.minecraft.network.chat.contents.TranslatableContents) result.getSiblings().getLast().getContents();
+        helper.assertTrue(quantities.getKey().equals("message.furnacedistributor.distributed_items")
+                && java.util.Arrays.equals(quantities.getArgs(), new Object[]{16, 1, 3})
+                && reasons.getKey().equals("message.furnacedistributor.skipped_mixed")
+                && java.util.Arrays.equals(reasons.getArgs(), new Object[]{1, 1}),
+                "real server feedback reports committed quantities, incompatible smoker and full input separately");
+        helper.assertTrue(available.getItem(0).getCount() == 16 && incompatible.isEmpty()
+                && full.getItem(0).getCount() == 64 && player.getMainHandItem().isEmpty(),
+                "ignored feedback does not change inventory transfers");
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.DIAMOND, 16));
+        distribute(helper, player, 3);
+        result = lastFeedback(player);
+        reasons = (net.minecraft.network.chat.contents.TranslatableContents) result.getSiblings().getLast().getContents();
+        helper.assertTrue(quantities(result).getKey().equals("message.furnacedistributor.distributed_none")
+                && reasons.getKey().equals("message.furnacedistributor.skipped_item")
+                && java.util.Arrays.equals(reasons.getArgs(), new Object[]{3})
+                && player.getMainHandItem().getCount() == 16, "all rejected inputs report three incompatibilities without item loss");
+        helper.succeed();
+    }
+
+    public static void distribution64CoalFeedback(GameTestHelper helper) {
+        var furnaces = new java.util.ArrayList<AbstractFurnaceBlockEntity>();
+        for (int i = 0; i < 64; i++) {
+            var pos = FIRST.offset(i % 4, i / 16, i / 4 % 4);
+            helper.setBlock(pos, Blocks.FURNACE);
+            var furnace = helper.getBlockEntity(pos, AbstractFurnaceBlockEntity.class);
+            if (i >= 4) furnace.setItem(1, new ItemStack(Items.COAL, 64));
+            furnaces.add(furnace);
+        }
+        var player = player(helper, new ItemStack(Items.COAL, 64));
+        DistributionManager.distribute(player, helper.absolutePos(FIRST), helper.absolutePos(FIRST.offset(3, 3, 3)));
+        Component result = lastFeedback(player);
+        helper.assertTrue(java.util.Arrays.equals(quantities(result).getArgs(), new Object[]{64, 4, 64}),
+                "64 coal distributed to four of 64 real furnaces");
+        var skipped = quantities(result.getSiblings().getLast());
+        helper.assertTrue(skipped.getKey().equals("message.furnacedistributor.skipped_space")
+                && java.util.Arrays.equals(skipped.getArgs(), new Object[]{60}), "60 full fuel slots reported without zero categories");
+        for (int i = 0; i < 64; i++) helper.assertTrue(furnaces.get(i).getItem(1).getCount() == (i < 4 ? 16 : 64),
+                "exact real fuel transfer at furnace " + i);
+        helper.assertTrue(player.getMainHandItem().isEmpty(), "all 64 held coal transferred with no loss");
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COAL, 64));
+        for (var furnace : furnaces) furnace.setItem(1, new ItemStack(Items.COAL, 64));
+        DistributionManager.distribute(player, helper.absolutePos(FIRST), helper.absolutePos(FIRST.offset(3, 3, 3)));
+        result = lastFeedback(player);
+        helper.assertTrue(quantities(result).getKey().equals("message.furnacedistributor.distributed_none")
+                && java.util.Arrays.equals(quantities(result).getArgs(), new Object[]{64})
+                && java.util.Arrays.equals(quantities(result.getSiblings().getLast()).getArgs(), new Object[]{64})
+                && player.getMainHandItem().getCount() == 64, "all full: zero moved, exact exclusion count, held items intact");
+        helper.succeed();
+    }
+
+    public static void distributionAvailableItemsFeedback(GameTestHelper helper) {
+        for (int i = 0; i < 8; i++) furnace(helper, i, Blocks.FURNACE);
+        var player = player(helper, new ItemStack(Items.COBBLESTONE, 64));
+        distribute(helper, player, 8);
+        helper.assertTrue(java.util.Arrays.equals(quantities(lastFeedback(player)).getArgs(), new Object[]{64, 8, 8})
+                && lastFeedback(player).getSiblings().isEmpty(), "all accepted: 8/8 without zero skipped");
+        for (int i = 0; i < 8; i++) furnace(helper, i, Blocks.FURNACE).clearContent();
+        player.getInventory().getNonEquipmentItems().set(0, new ItemStack(Items.COBBLESTONE, 2));
+        distribute(helper, player, 8);
+        helper.assertTrue(quantities(lastFeedback(player)).getKey().equals("message.furnacedistributor.not_enough_items")
+                && player.getMainHandItem().getCount() == 2, "disallowed partial allocation remains a refusal");
+        ServerConfig.get().allowPartialDistribution = true;
+        try {
+            distribute(helper, player, 8);
+            helper.assertTrue(java.util.Arrays.equals(quantities(lastFeedback(player)).getArgs(), new Object[]{2, 2, 8})
+                    && lastFeedback(player).getSiblings().isEmpty() && player.getMainHandItem().isEmpty(),
+                    "six eligible destinations without items are never labelled full or incompatible");
+            int stored = 0;
+            for (int i = 0; i < 8; i++) stored += helper.getBlockEntity(FIRST.offset(i, 0, 0), AbstractFurnaceBlockEntity.class).getItem(0).getCount();
+            helper.assertTrue(stored == 2, "feedback matches actual inventory credit");
+        } finally {
+            ServerConfig.get().allowPartialDistribution = false;
+        }
+        helper.succeed();
+    }
+
+    private static net.minecraft.network.chat.contents.TranslatableContents quantities(Component component) {
+        return (net.minecraft.network.chat.contents.TranslatableContents) component.getContents();
+    }
+
+    private static Component lastFeedback(ServerPlayer player) {
+        // Inspect the existing throttle snapshot; the headless mock player has no HUD to draw.
+        try {
+            var recent = com.thonyy.furnacedistributor.feedback.PlayerFeedback.class.getDeclaredField("RECENT");
+            recent.setAccessible(true);
+            Object throttle = ((java.util.Map<?, ?>) recent.get(null)).get(player);
+            var previous = com.thonyy.furnacedistributor.feedback.FeedbackThrottle.class.getDeclaredField("previous");
+            previous.setAccessible(true);
+            return (Component) previous.get(throttle);
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError("Cannot inspect recorded action-bar result", exception);
+        }
+    }
 }

@@ -156,6 +156,8 @@ public class IronGameTests {
         var recipe = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.SMELTING,
                 new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
         furnace.setRecipeUsed(recipe);
+        // Two raw-iron smelts guarantee at least one XP; one can legitimately round down to zero.
+        furnace.setRecipeUsed(recipe);
         int[] outputs = FurnaceAccessRegistry.find(furnace).access().outputSlots(furnace);
         ItemStack named = new ItemStack(Items.IRON_INGOT, 10);
         named.set(DataComponents.CUSTOM_NAME, Component.literal("factory output"));
@@ -163,7 +165,8 @@ public class IronGameTests {
         ServerPlayer player = player(helper, ItemStack.EMPTY);
         for (int i = 0; i < player.getInventory().getNonEquipmentItems().size(); i++) player.getInventory().getNonEquipmentItems().set(i, new ItemStack(Items.STONE, 64));
         collect(helper, player, 1);
-        helper.assertTrue(furnace.recipes.size() == 1 && Arrays.stream(outputs).map(slot -> furnace.getItem(slot).getCount()).sum() == 70,
+        helper.assertTrue(furnace.recipes.values().intStream().sum() == 2
+                && Arrays.stream(outputs).map(slot -> furnace.getItem(slot).getCount()).sum() == 70,
                 "case 10: full inventory leaves items and XP intact");
         player.getInventory().getNonEquipmentItems().set(1, named.copyWithCount(60));
         collect(helper, player, 1);

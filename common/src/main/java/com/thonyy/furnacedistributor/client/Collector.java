@@ -28,6 +28,7 @@ public final class Collector {
             return;
         }
 
+        SelectionFeedback.hideTip();
         BlockPos target = FurnaceSelectionHandler.getLookingAtPos(mc);
         boolean furnaceTarget = SelectionPreview.isSupportedFurnace(mc, target);
         CollectionShortcut.Action action = CollectionShortcut.resolve(collectionMode,
@@ -35,6 +36,7 @@ public final class Collector {
 
         // A seleção pendente e o atalho contextual têm prioridade, sem substituir a área salva.
         if (action == CollectionShortcut.Action.COLLECT_SAVED) {
+            SelectionFeedback.collectedSavedArea();
             ModNetworking.sendCollect(
                     new CollectPacket(
                             FurnaceSelectionHandler.getLastConfirmedFirstPos(),

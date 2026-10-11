@@ -47,6 +47,9 @@ public final class IntegrationTestMod {
         add("vanillagametests.distributionandcollectionsharecooldown", VanillaGameTests::distributionAndCollectionShareCooldown);
         add("vanillagametests.rangeandaccess", VanillaGameTests::rangeAndAccess);
         add("vanillagametests.unloadedchunksandvanillalock", VanillaGameTests::unloadedChunksAndVanillaLock);
+        add("vanillagametests.distributionskippedsummary", VanillaGameTests::distributionSkippedSummary);
+        add("vanillagametests.distribution64coalfeedback", VanillaGameTests::distribution64CoalFeedback);
+        add("vanillagametests.distributionavailableitemsfeedback", VanillaGameTests::distributionAvailableItemsFeedback);
         add("vanillagametests.secondlockedfurnacerejectsdistributionandcollection", VanillaGameTests::secondLockedFurnaceRejectsDistributionAndCollection);
         if (ModList.get().isLoaded("ironfurnaces")) {
             add("irongametests.normal128andmixed256", IronGameTests::normal128AndMixed256);

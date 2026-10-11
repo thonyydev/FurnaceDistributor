@@ -29,10 +29,12 @@ public final class ClientEvents {
             Collector.resetCollection();
             SelectionPreview.clear();
             SelectionFeedback.clear();
+            SelectionHud.reset();
             previousLevel = minecraft.level;
             previousPlayer = minecraft.player;
         }
 
+        SelectionHud.tick(minecraft);
         if (minecraft.player == null || minecraft.level == null) {
             drainKeys();
             return;

@@ -7,6 +7,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
@@ -29,7 +30,7 @@ public final class RenderHandler {
     private static final Map<LevelRenderState, Frame> FRAMES = java.util.Collections.synchronizedMap(new WeakHashMap<>());
 
     /** Read live world/player data only during extraction; submissions use the captured frame. */
-    public static void extract(Camera camera, LevelRenderState levelState) {
+    public static void extract(Camera camera, LevelRenderState levelState, Frustum frustum) {
         Minecraft mc = Minecraft.getInstance();
         FRAMES.remove(levelState);
         if (mc.level == null || mc.player == null || mc.gui.hud.isHidden() || mc.gui.screen() != null
@@ -64,14 +65,40 @@ public final class RenderHandler {
                 block(outlines, collectSecond, 0xCCE566FF);
             }
         }
-        List<BlockPos> furnaces = first != null && second == null && preview != null
+        List<BlockPos> positions = first != null && second == null && preview != null
                 && ClientConfig.get().showItemPreview && !mc.player.getMainHandItem().isEmpty()
                 ? SelectionPreview.get(mc, first, preview).positions() : List.of();
-        ItemStackRenderState item = new ItemStackRenderState();
-        if (!furnaces.isEmpty()) mc.getItemModelResolver().updateForTopItem(item, mc.player.getMainHandItem(),
-                ItemDisplayContext.GROUND, mc.level, mc.player, 0);
+        List<BlockPos> furnaces = List.of();
+        ItemStackRenderState item = null;
+        if (!positions.isEmpty()) {
+            item = new ItemStackRenderState();
+            mc.getItemModelResolver().updateForTopItem(item, mc.player.getMainHandItem(),
+                    ItemDisplayContext.GROUND, mc.level, mc.player, 0);
+            furnaces = visiblePreview(positions, frustum, ClientConfig.get().maxPreviewItems,
+                    previewRadius(item.getModelBoundingBox()));
+        }
         float bobbing = (float) Math.sin((System.currentTimeMillis() % 3000L) / 3000.0 * Math.PI * 2) * 0.1f;
         FRAMES.put(levelState, new Frame(camera.position(), new Quaternionf(camera.rotation()), List.copyOf(outlines), furnaces, item, bobbing));
+    }
+
+    private static double previewRadius(AABB model) {
+        double x = Math.max(Math.abs(model.minX), Math.abs(model.maxX));
+        double y = Math.max(Math.abs(model.minY), Math.abs(model.maxY));
+        double z = Math.max(Math.abs(model.minZ), Math.abs(model.maxZ));
+        // A sphere includes every billboard rotation, including larger resource-pack models.
+        return Math.max(0.5, Math.sqrt(x * x + y * y + z * z) * 0.5);
+    }
+
+    private static List<BlockPos> visiblePreview(List<BlockPos> positions, Frustum frustum, int limit, double radius) {
+        List<BlockPos> visible = new ArrayList<>();
+        for (BlockPos pos : positions) {
+            double x = pos.getX() + 0.5, y = pos.getY() + 1.3, z = pos.getZ() + 0.5;
+            if (!frustum.isVisible(new AABB(x - radius, y - radius - 0.1, z - radius,
+                    x + radius, y + radius + 0.1, z + radius))) continue;
+            visible.add(pos);
+            if (visible.size() == limit) break;
+        }
+        return List.copyOf(visible);
     }
 
     public static void submit(LevelRenderState levelState, SubmitNodeCollector collector) {

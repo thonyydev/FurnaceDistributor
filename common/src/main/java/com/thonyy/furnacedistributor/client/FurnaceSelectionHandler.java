@@ -131,6 +131,7 @@ public final class FurnaceSelectionHandler {
         lastConfirmedSecondPos = secondPos.immutable();
         lastConfirmedFurnaceCount = furnaceCount;
         SelectionFeedback.confirmed(false, furnaceCount);
+        SelectionFeedback.manualAreaConfirmed();
         Collector.resetCollection();
 
         Distributor.distributeItems(
@@ -194,6 +195,7 @@ public final class FurnaceSelectionHandler {
     }
 
     public static void clearConfirmedArea() {
+        SelectionFeedback.hideTip();
         lastConfirmedFirstPos = null;
         lastConfirmedSecondPos = null;
         lastConfirmedFurnaceCount = 0;

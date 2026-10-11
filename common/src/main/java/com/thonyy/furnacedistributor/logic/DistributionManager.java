@@ -8,6 +8,7 @@ import com.thonyy.furnacedistributor.furnace.FurnaceTarget;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
@@ -31,16 +32,19 @@ public final class DistributionManager {
         int[] capacities = new int[furnaces.size()];
         FurnaceTransfer.Inputs[] inputs = new FurnaceTransfer.Inputs[furnaces.size()];
         int eligible = 0;
-        boolean accepted = false;
+        int incompatible = 0;
+        int noSpace = 0;
         FurnaceRecipes recipes = new FurnaceRecipes(player.level(), heldItem);
         for (int i = 0; i < furnaces.size(); i++) {
             inputs[i] = FurnaceTransfer.inputs(furnaces.get(i), heldItem, fuel, recipes);
-            accepted |= inputs[i].accepted();
             capacities[i] = inputs[i].capacity();
+            if (!inputs[i].accepted()) incompatible++;
+            else if (capacities[i] == 0) noSpace++;
             if (capacities[i] > 0) eligible++;
         }
         if (eligible == 0) {
-            OperationGuard.error(player, accepted ? "no_capacity" : "invalid_item");
+            PlayerFeedback.actionBar(player, result(0, 0, furnaces.size(), heldItem.getCount(), incompatible, noSpace)
+                    .withStyle(ChatFormatting.RED));
             return;
         }
         ServerConfig config = ServerConfig.get();
@@ -61,9 +65,24 @@ public final class DistributionManager {
         player.getInventory().setChanged();
         player.inventoryMenu.broadcastChanges();
         // One complete result: a second action-bar message would immediately hide the quantities.
-        PlayerFeedback.actionBar(player, Component.translatable(heldItem.isEmpty()
-                        ? "message.furnacedistributor.distributed_items" : "message.furnacedistributor.distributed_items_partial",
-                distributed, used, heldItem.getCount()).withStyle(heldItem.isEmpty() ? ChatFormatting.GREEN : ChatFormatting.YELLOW));
+        PlayerFeedback.actionBar(player, result(distributed, used, furnaces.size(), heldItem.getCount(), incompatible, noSpace)
+                .withStyle(heldItem.isEmpty() && incompatible + noSpace == 0 ? ChatFormatting.GREEN : ChatFormatting.YELLOW));
+    }
+
+    private static MutableComponent result(int distributed, int used, int total, int remaining, int incompatible, int noSpace) {
+        MutableComponent result = distributed == 0
+                ? Component.translatable("message.furnacedistributor.distributed_none", total)
+                : Component.translatable("message.furnacedistributor.distributed_items", distributed, used, total);
+        if (incompatible > 0 && noSpace > 0) {
+            result.append(" · ").append(Component.translatable("message.furnacedistributor.skipped_mixed", noSpace, incompatible));
+        } else if (incompatible + noSpace > 0) {
+            result.append(" · ").append(Component.translatable("message.furnacedistributor."
+                    + (noSpace > 0 ? "skipped_space" : "skipped_item"), incompatible + noSpace));
+        }
+        if (distributed > 0 && remaining > 0) {
+            result.append(" · ").append(Component.translatable("message.furnacedistributor.remaining_items", remaining));
+        }
+        return result;
     }
 
     private DistributionManager() { }
