@@ -38,11 +38,15 @@ public final class KeyBindings {
             "key.furnacedistributor.settings", InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
 
+    public static final KeyMapping BULK_KEY = new KeyMapping(
+            "key.furnacedistributor.bulk", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY);
+
     public static void register() {
         KeyMappingRegistry.register(DISTRIBUTE_KEY);
         KeyMappingRegistry.register(COLLECT_KEY);
         KeyMappingRegistry.register(CANCEL_KEY);
         KeyMappingRegistry.register(SETTINGS_KEY);
+        KeyMappingRegistry.register(BULK_KEY);
     }
 
     private KeyBindings() {

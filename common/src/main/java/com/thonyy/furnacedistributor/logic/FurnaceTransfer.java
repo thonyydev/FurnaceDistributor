@@ -32,22 +32,36 @@ public final class FurnaceTransfer {
 
     /** Recheck each destination before writing; debit the source by the amount actually committed. */
     public static int insert(FurnaceTarget target, Inputs inputs, int amount, ItemStack source, FurnaceRecipes recipes) {
-        // A changed item/components also invalidates the recipe snapshot used to plan this transfer.
-        if (!ItemStack.isSameItemSameComponents(inputs.plannedStack(), source)) return 0;
-        int[] shares = DistributionPlan.allocate(Math.min(amount, source.getCount()), inputs.capacities(), true);
+        return insert(target, inputs, Math.min(amount, source.getCount()), ignored -> source, 1, recipes);
+    }
+
+    /** Multiple real sources share one slot plan; never synthesize a stack that owns player items. */
+    public static int insert(FurnaceTarget target, Inputs inputs, int amount,
+                             java.util.function.IntFunction<ItemStack> sources, int sourceCount, FurnaceRecipes recipes) {
+        int[] shares = DistributionPlan.allocate(amount, inputs.capacities(), true);
         int moved = 0;
         for (int i = 0; i < shares.length; i++) {
             int slot = inputs.slots()[i];
-            if (shares[i] <= 0 || !target.access().canInsert(target.entity(), slot, source, recipes)) continue;
-            ItemStack existing = target.inventory().getItem(slot);
-            int count = Math.min(source.getCount(), Math.min(shares[i],
-                    capacity(existing, source, target.access().insertionLimit(target.entity(), slot, source))));
-            if (count <= 0) continue;
-            ItemStack inserted = (existing.isEmpty() ? source : existing).copyWithCount(existing.getCount() + count);
-            target.inventory().setItem(slot, inserted);
-            source.shrink(count);
-            target.entity().setChanged();
-            moved += count;
+            for (int sourceIndex = 0; sourceIndex < sourceCount && shares[i] > 0; sourceIndex++) {
+                ItemStack source = sources.apply(sourceIndex);
+                var entity = target.entity();
+                var level = entity.getLevel();
+                if (entity.isRemoved() || level != null && (!level.hasChunk(entity.getBlockPos().getX() >> 4,
+                        entity.getBlockPos().getZ() >> 4) || level.getBlockEntity(entity.getBlockPos()) != entity)) return moved;
+                // Read the live inventory again; changed components invalidate the recipe snapshot.
+                if (source.isEmpty() || !ItemStack.isSameItemSameComponents(inputs.plannedStack(), source)
+                        || !target.access().canInsert(target.entity(), slot, source, recipes)) continue;
+                ItemStack existing = target.inventory().getItem(slot);
+                int count = Math.min(source.getCount(), Math.min(shares[i],
+                        capacity(existing, source, target.access().insertionLimit(target.entity(), slot, source))));
+                if (count <= 0) continue;
+                ItemStack inserted = (existing.isEmpty() ? source : existing).copyWithCount(existing.getCount() + count);
+                target.inventory().setItem(slot, inserted);
+                source.shrink(count);
+                target.entity().setChanged();
+                shares[i] -= count;
+                moved += count;
+            }
         }
         return moved;
     }

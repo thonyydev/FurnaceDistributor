@@ -40,6 +40,12 @@ public final class IntegrationTestMod {
     }
     public IntegrationTestMod(IEventBus bus) {
         ITEMS.register(bus);
+        add("bulk.equivalent32", BulkGameTests::fiveStacksAnd32Furnaces);
+        add("bulk.mixedpartial", BulkGameTests::mixedMaterialsFuelAndPartial);
+        add("bulk.livecomponents", BulkGameTests::liveInventoryAndComponents);
+        add("bulk.fullandinsufficient", BulkGameTests::fullIncompatibleAndInsufficient);
+        add("bulk.limitsandcooldown", BulkGameTests::slotLimitsAndCooldown);
+        add("bulk.accessandchunks", BulkGameTests::areaAccessAndChunks);
         add("vanillagametests.startupandvanilla128", VanillaGameTests::startupAndVanilla128);
         add("vanillagametests.blastsmokerandinvalidrecipes", VanillaGameTests::blastSmokerAndInvalidRecipes);
         add("vanillagametests.partialfullcomponentsandfuel", VanillaGameTests::partialFullComponentsAndFuel);
@@ -47,8 +53,12 @@ public final class IntegrationTestMod {
         add("vanillagametests.distributionandcollectionsharecooldown", VanillaGameTests::distributionAndCollectionShareCooldown);
         add("vanillagametests.rangeandaccess", VanillaGameTests::rangeAndAccess);
         add("vanillagametests.unloadedchunksandvanillalock", VanillaGameTests::unloadedChunksAndVanillaLock);
+        add("vanillagametests.distributionskippedsummary", VanillaGameTests::distributionSkippedSummary);
+        add("vanillagametests.distribution64coalfeedback", VanillaGameTests::distribution64CoalFeedback);
+        add("vanillagametests.distributionavailableitemsfeedback", VanillaGameTests::distributionAvailableItemsFeedback);
         add("vanillagametests.secondlockedfurnacerejectsdistributionandcollection", VanillaGameTests::secondLockedFurnaceRejectsDistributionAndCollection);
         if (ModList.get().isLoaded("ironfurnaces")) {
+            add("bulk.ironallmodes", IronGameTests::bulkAllModesAndRemainderFuel);
             add("irongametests.normal128andmixed256", IronGameTests::normal128AndMixed256);
             add("irongametests.normaloccupiedcomponentsandaugments", IronGameTests::normalOccupiedComponentsAndAugments);
             add("irongametests.factoryactivetiersandcapacity", IronGameTests::factoryActiveTiersAndCapacity);

@@ -23,6 +23,37 @@ import static com.thonyy.furnacedistributor.neoforge.tests.VanillaGameTests.*;
 
 /** Registered only when Iron is really loaded; tests use its actual entities, recipes and tick. */
 public class IronGameTests {
+    public static void bulkAllModesAndRemainderFuel(GameTestHelper helper) {
+        var normal = iron(helper, 0, "iron", false);
+        var factory = iron(helper, 1, "diamond", true);
+        var generator = iron(helper, 2, "gold", false);
+        generator.setItem(BlockIronFurnaceTileBase.AUGMENT_BLUE, new ItemStack(BuiltInRegistries.ITEM.getValue(
+                Identifier.fromNamespaceAndPath("ironfurnaces", "augment_generator"))));
+        tick(generator);
+        helper.assertTrue(generator.isGenerator(), "generator mode really active");
+        var player = player(helper, new ItemStack(Items.RAW_IRON, 64));
+        player.getInventory().setItem(1, new ItemStack(Items.RAW_IRON, 64));
+        player.getInventory().setItem(2, new ItemStack(Items.COAL, 64));
+        BulkGameTests.bulk(helper, player, 3, 7);
+        helper.assertTrue(normal.getItem(0).getCount() == 64 && inputCount(factory) == 64
+                && normal.getItem(1).getCount() == 32 && generator.getItem(BlockIronFurnaceTileBase.GENERATOR_FUEL).getCount() == 32,
+                "bulk uses distinct Normal/Factory/Generator inputs and fuel rules");
+        BulkGameTests.result(helper, player, 192, 3, 3);
+        for (int slot : BlockIronFurnaceTileBase.FACTORY_INPUT) helper.assertTrue(factory.getItem(slot).getCount() >= 10
+                && factory.getItem(slot).getCount() <= 11, "factory inputs remain balanced across source stacks");
+        normal.setItem(1, ItemStack.EMPTY);
+        generator.setItem(BlockIronFurnaceTileBase.GENERATOR_FUEL, ItemStack.EMPTY);
+        player.getInventory().setItem(0, new ItemStack(Items.LAVA_BUCKET));
+        player.getInventory().setItem(1, new ItemStack(Items.LAVA_BUCKET));
+        BulkGameTests.bulk(helper, player, 3, 3);
+        helper.assertTrue(normal.getItem(1).getCount() == 1 && normal.getItem(1).is(Items.LAVA_BUCKET)
+                && generator.getItem(BlockIronFurnaceTileBase.GENERATOR_FUEL).getCount() == 1
+                && player.getInventory().getItem(0).isEmpty() && player.getInventory().getItem(1).isEmpty(),
+                "one remainder fuel per generator slot; independent bucket stacks conserved");
+        BulkGameTests.result(helper, player, 2, 2, 3);
+        helper.succeed();
+    }
+
     static BlockIronFurnaceTileBase iron(GameTestHelper helper, int index, String name, boolean factory) {
         var block = BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("ironfurnaces", name + "_furnace"));
         helper.assertTrue(block != Blocks.AIR, "known Iron block " + name);
@@ -156,6 +187,8 @@ public class IronGameTests {
         var recipe = helper.getLevel().recipeAccess().getRecipeFor(RecipeType.SMELTING,
                 new SingleRecipeInput(new ItemStack(Items.RAW_IRON)), helper.getLevel()).orElseThrow();
         furnace.setRecipeUsed(recipe);
+        // Two raw-iron smelts guarantee at least one XP; one can legitimately round down to zero.
+        furnace.setRecipeUsed(recipe);
         int[] outputs = FurnaceAccessRegistry.find(furnace).access().outputSlots(furnace);
         ItemStack named = new ItemStack(Items.IRON_INGOT, 10);
         named.set(DataComponents.CUSTOM_NAME, Component.literal("factory output"));
@@ -163,7 +196,8 @@ public class IronGameTests {
         ServerPlayer player = player(helper, ItemStack.EMPTY);
         for (int i = 0; i < player.getInventory().getNonEquipmentItems().size(); i++) player.getInventory().getNonEquipmentItems().set(i, new ItemStack(Items.STONE, 64));
         collect(helper, player, 1);
-        helper.assertTrue(furnace.recipes.size() == 1 && Arrays.stream(outputs).map(slot -> furnace.getItem(slot).getCount()).sum() == 70,
+        helper.assertTrue(furnace.recipes.values().intStream().sum() == 2
+                && Arrays.stream(outputs).map(slot -> furnace.getItem(slot).getCount()).sum() == 70,
                 "case 10: full inventory leaves items and XP intact");
         player.getInventory().getNonEquipmentItems().set(1, named.copyWithCount(60));
         collect(helper, player, 1);

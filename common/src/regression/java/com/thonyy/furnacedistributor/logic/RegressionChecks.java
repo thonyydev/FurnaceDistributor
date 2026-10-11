@@ -50,12 +50,20 @@ public final class RegressionChecks {
                 .build(net.minecraft.data.registries.VanillaRegistries.createLookup())
                 .forEach(net.minecraft.core.component.DataComponentInitializers.PendingComponents::apply);
         clientInputAndSelection();
+        contextualTips();
+        checks += com.thonyy.furnacedistributor.client.UiAnimationChecks.run();
         inventory();
         checks += FurnaceTransferChecks.run();
         packets();
+        checks += BulkChecks.run();
+        checks += com.thonyy.furnacedistributor.client.BulkUiChecks.run(Path.of(arguments[0]));
         collectionArea();
         feedback();
+        distributionFeedback(Path.of(arguments[0]));
         renderSubmissions();
+        previewCulling();
+        hudWrapping(Path.of(arguments[0]));
+        distributionActionBarTarget();
         System.out.println("Furnace Distributor: " + checks + " regression checks passed.");
     }
 
@@ -192,7 +200,15 @@ public final class RegressionChecks {
             ServerConfig old = file.load(ServerConfig::new);
             check(old.maxDistance == 8 && old.requestCooldownTicks == 100 && old.smartDistribution && old.collectExperience,
                     "clamping and missing fields");
+            check(old.enableBulkDistribution && old.maxBulkSlots == 36, "old server configs enable bulk with a bounded slot budget");
+            old.enableBulkDistribution = false;
+            old.maxBulkSlots = 1000;
             check(file.save(old), "save validated config");
+            ServerConfig reloaded = file.load(ServerConfig::new);
+            check(!reloaded.enableBulkDistribution && reloaded.maxBulkSlots == 36, "bulk server settings survive restart and clamp upper bound");
+            reloaded.maxBulkSlots = -1;
+            reloaded.validate();
+            check(reloaded.maxBulkSlots == 1, "bulk server slot lower bound");
             check(JsonParser.parseString(Files.readString(path)).getAsJsonObject().get("futureOption").getAsInt() == 123,
                     "preserve unknown fields");
             String broken = "{broken json";
@@ -212,6 +228,42 @@ public final class RegressionChecks {
             client.selectionDisplayTicks = Integer.MAX_VALUE;
             client.validate();
             check(client.selectionDisplayTicks == 1200, "client upper bound");
+            Path clientPath = directory.resolve("client.json");
+            Files.writeString(clientPath, "{\"showItemPreview\":false,\"selectionDisplayTicks\":200,\"futureOption\":123}");
+            ConfigFile<ClientConfig> clientFile = new ConfigFile<>(clientPath, ClientConfig.class, ClientConfig::validate);
+            ClientConfig existing = clientFile.load(ClientConfig::new);
+            check(!existing.showItemPreview && existing.selectionDisplayTicks == 200 && existing.maxPreviewItems == 64,
+                    "old client config retains settings and full preview budget");
+            check(existing.showContextualTips && existing.collectionTipSelections == 0 && !existing.collectionTipLearned,
+                    "old config enables onboarding without losing existing settings");
+            check(existing.enableUiAnimations, "old config enables UI animations by default");
+            existing.collectionTipSelections = 2;
+            existing.showContextualTips = false;
+            existing.enableUiAnimations = false;
+            check(clientFile.save(existing), "save disabled tips and onboarding progress");
+            existing = new ConfigFile<>(clientPath, ClientConfig.class, ClientConfig::validate).load(ClientConfig::new);
+            check(!existing.showContextualTips && existing.collectionTipSelections == 2 && !existing.collectionTipLearned,
+                    "restart preserves onboarding progress while disabled");
+            check(!existing.enableUiAnimations, "disabled UI animations survive restart");
+            existing.showContextualTips = true;
+            existing.collectionTipLearned = true;
+            check(clientFile.save(existing), "save learned shortcut");
+            existing = new ConfigFile<>(clientPath, ClientConfig.class, ClientConfig::validate).load(ClientConfig::new);
+            check(existing.showContextualTips && existing.collectionTipSelections == 2 && existing.collectionTipLearned,
+                    "learned shortcut survives restart and re-enabling tips");
+            existing.collectionTipSelections = Integer.MAX_VALUE;
+            existing.validate();
+            check(existing.collectionTipSelections == 3, "onboarding upper bound");
+            existing.collectionTipSelections = -1;
+            existing.validate();
+            check(existing.collectionTipSelections == 0, "onboarding lower bound");
+            existing.maxPreviewItems = -1;
+            existing.validate();
+            check(existing.maxPreviewItems == 1, "preview budget lower bound");
+            existing.maxPreviewItems = Integer.MAX_VALUE;
+            check(clientFile.save(existing) && existing.maxPreviewItems == 64, "preview budget upper bound on save");
+            check(JsonParser.parseString(Files.readString(clientPath)).getAsJsonObject().get("futureOption").getAsInt() == 123,
+                    "client config save preserves unknown fields");
         } finally {
             try (var files = Files.list(directory)) {
                 for (Path path : files.toList()) Files.delete(path);
@@ -257,7 +309,7 @@ public final class RegressionChecks {
             }
         }
         // Literal keys in client/server source must exist; dynamic error/option keys are checked below.
-        Pattern literal = Pattern.compile("\"((?:message|key|hud|config)\\.furnacedistributor\\.[a-z_]+)\"");
+        Pattern literal = Pattern.compile("\"((?:message|key|hud|config|bulk)\\.furnacedistributor\\.[a-z_]+)\"");
         try (var paths = Files.walk(root.resolve("common/src/main/java"))) {
             for (Path path : paths.filter(value -> value.toString().endsWith(".java")).toList()) {
                 var matcher = literal.matcher(Files.readString(path));
@@ -265,10 +317,11 @@ public final class RegressionChecks {
             }
         }
         for (String key : new String[]{"area_too_large", "area_too_far", "area_outside_world", "area_unloaded",
-                "area_protected", "too_many_furnaces", "no_item", "no_furnaces", "no_capacity", "invalid_item", "not_enough_items"}) {
+                "area_protected", "too_many_furnaces", "no_item", "no_furnaces", "no_capacity", "invalid_item", "not_enough_items",
+                "bulk_disabled", "bulk_invalid_slots", "bulk_empty"}) {
             check(english.has("message.furnacedistributor." + key), "dynamic error " + key);
         }
-        for (String key : new String[]{"outlines", "preview", "hud"}) {
+        for (String key : new String[]{"outlines", "preview", "hud", "tips", "animations"}) {
             check(english.has("config.furnacedistributor." + key) && english.has("config.furnacedistributor." + key + ".tooltip"),
                     "dynamic setting " + key);
         }
@@ -403,6 +456,266 @@ public final class RegressionChecks {
             check(submissions[1] == 0, "unknown per-furnace quantities submit no text or symbols");
         } finally {
             frames.remove(state);
+        }
+    }
+
+    private static void hudWrapping(Path root) throws Exception {
+        var actionBarLines = com.thonyy.furnacedistributor.mixin.DistributionActionBarMixin.class
+                .getDeclaredMethod("lines", net.minecraft.client.gui.Font.class, Component.class, int.class);
+        actionBarLines.setAccessible(true);
+        var rowConstructor = Class.forName("com.thonyy.furnacedistributor.client.SelectionHud$Row").getDeclaredConstructors()[0];
+        rowConstructor.setAccessible(true);
+        var wrap = com.thonyy.furnacedistributor.client.SelectionHud.class.getDeclaredMethod("wrap", java.util.List.class,
+                net.minecraft.client.gui.Font.class, int.class);
+        wrap.setAccessible(true);
+        var textAccessor = Class.forName("com.thonyy.furnacedistributor.client.SelectionHud$Line").getDeclaredMethod("text");
+        var colorAccessor = textAccessor.getDeclaringClass().getDeclaredMethod("color");
+        textAccessor.setAccessible(true);
+        colorAccessor.setAccessible(true);
+        var splitter = new net.minecraft.client.StringSplitter((point, style) -> 6f);
+        var font = new net.minecraft.client.gui.Font(new net.minecraft.client.gui.Font.Provider() {
+            @Override public net.minecraft.client.gui.GlyphSource glyphs(net.minecraft.network.chat.FontDescription description) { return null; }
+            @Override public net.minecraft.client.gui.font.glyphs.EffectGlyph effect() { return null; }
+        }) {
+            @Override public java.util.List<net.minecraft.util.FormattedCharSequence> split(net.minecraft.network.chat.FormattedText text, int width) {
+                return splitter.splitLines(text, width, net.minecraft.network.chat.Style.EMPTY).stream()
+                        .map(net.minecraft.locale.Language.getInstance()::getVisualOrder).toList();
+            }
+            @Override public int width(net.minecraft.util.FormattedCharSequence text) { return (int) splitter.stringWidth(text); }
+            @Override public net.minecraft.client.StringSplitter getSplitter() { return splitter; }
+        };
+        try (var files = Files.list(root.resolve("common/src/main/resources/assets/furnacedistributor/lang"))) {
+            for (Path path : files.filter(file -> file.toString().endsWith(".json")).toList()) {
+                var translated = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
+                String count = String.format(translated.get("hud.furnacedistributor.estimate").getAsString(), 24, 64);
+                String controls = String.format(translated.get("hud.furnacedistributor.select_controls").getAsString(), "R", "X");
+                String title = translated.get("hud.furnacedistributor.tip_title").getAsString();
+                String tip = String.format(translated.get("hud.furnacedistributor.collect_tip").getAsString(), "[Mouse Button 4]");
+                var rows = java.util.List.of(rowConstructor.newInstance(Component.literal(count).withStyle(style -> style.withBold(true)), 0xFFFF55),
+                        rowConstructor.newInstance(Component.literal(controls), 0xCCCCCC),
+                        rowConstructor.newInstance(Component.literal(title).withStyle(style -> style.withBold(true)), 0x55FFFF),
+                        rowConstructor.newInstance(Component.literal(tip), 0xCCCCCC));
+                for (int width : new int[]{120, 220, 320}) {
+                    var lines = (java.util.List<?>) wrap.invoke(null, rows, font, width);
+                    StringBuilder contents = new StringBuilder();
+                    for (Object line : lines) {
+                        var text = (net.minecraft.util.FormattedCharSequence) textAccessor.invoke(line);
+                        check(font.width(text) <= width, "HUD lines fit narrow and wide GUI: " + path.getFileName());
+                        int color = (int) colorAccessor.invoke(line);
+                        text.accept((index, style, point) -> {
+                            check(style.isBold() == (color == 0xFFFF55 || color == 0x55FFFF), "HUD emphasizes counts and tip title");
+                            contents.appendCodePoint(point);
+                            return true;
+                        });
+                    }
+                    check(contents.toString().replaceAll("\\s", "").equals((count + controls + title + tip).replaceAll("\\s", "")),
+                            "HUD wrapping preserves counts, controls and tip in " + path.getFileName());
+                    String result = String.format(translated.get("message.furnacedistributor.distributed_items").getAsString(), 32, 4, 8)
+                            + " · " + String.format(translated.get("message.furnacedistributor.skipped_mixed").getAsString(), 2, 2)
+                            + " · " + String.format(translated.get("message.furnacedistributor.remaining_items").getAsString(), 32);
+                    @SuppressWarnings("unchecked") var resultLines = (java.util.List<Component>) actionBarLines.invoke(null, font,
+                            Component.literal(result).withStyle(ChatFormatting.YELLOW), width);
+                    StringBuilder resultText = new StringBuilder();
+                    for (Component line : resultLines) {
+                        check(splitter.stringWidth(line) <= width, "distribution result fits available Action Bar width");
+                        line.visit((style, part) -> {
+                            check(style.getColor().getValue() == 0xFFFF55, "Action Bar preserves result severity");
+                            resultText.append(part);
+                            return java.util.Optional.empty();
+                        }, net.minecraft.network.chat.Style.EMPTY);
+                    }
+                    check(resultText.toString().replaceAll("\\s", "").equals(result.replaceAll("\\s", "")),
+                            "adaptive Action Bar preserves quantities, fraction, reasons and remainder in " + path.getFileName());
+                }
+            }
+        }
+    }
+
+    private static void distributionActionBarTarget() throws Exception {
+        var target = new org.objectweb.asm.tree.ClassNode();
+        try (var input = RegressionChecks.class.getClassLoader().getResourceAsStream("net/minecraft/client/gui/Hud.class")) {
+            new org.objectweb.asm.ClassReader(input).accept(target, 0);
+        }
+        var method = target.methods.stream().filter(value -> value.name.equals("extractOverlayMessage")
+                && value.desc.equals("(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V"))
+                .findFirst().orElseThrow();
+        int calls = 0;
+        for (var instruction : method.instructions) {
+            if (instruction instanceof org.objectweb.asm.tree.MethodInsnNode call
+                    && call.owner.equals("net/minecraft/client/gui/GuiGraphicsExtractor") && call.name.equals("textWithBackdrop")
+                    && call.desc.equals("(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIII)V")) calls++;
+        }
+        check(calls == 1, "Action Bar mixin invocation matches the actual Minecraft 26.2 bytecode");
+        var isResult = com.thonyy.furnacedistributor.mixin.DistributionActionBarMixin.class
+                .getDeclaredMethod("isDistributionResult", Component.class);
+        isResult.setAccessible(true);
+        check((boolean) isResult.invoke(null, Component.translatable("message.furnacedistributor.distributed_items", 64, 4, 64))
+                && (boolean) isResult.invoke(null, Component.translatable("message.furnacedistributor.distributed_none")),
+                "only distribution results receive adaptive rendering");
+        check(!(boolean) isResult.invoke(null, Component.literal("external message"))
+                && !(boolean) isResult.invoke(null, Component.translatable("message.furnacedistributor.area_protected")),
+                "other Action Bar messages and rejection errors retain vanilla rendering");
+    }
+
+    private static void distributionFeedback(Path root) throws Exception {
+        var method = DistributionManager.class.getDeclaredMethod("result", int.class, int.class, int.class,
+                int.class, int.class, int.class);
+        method.setAccessible(true);
+        int[][] cases = {{64,8,8,0,0,0}, {64,4,64,0,0,60}, {32,4,8,0,4,0}, {32,4,8,0,2,2},
+                {0,0,8,64,0,8}, {0,0,8,64,8,0}, {2,2,8,0,0,0}, {4,1,8,60,2,5}, {0,0,8,64,0,0}};
+        String[] expected = {"Distributed 64 items across 8/8 furnaces",
+                "Distributed 64 items across 4/64 furnaces · 60 skipped (no space)",
+                "Distributed 32 items across 4/8 furnaces · 4 skipped (incompatible item)",
+                "Distributed 32 items across 4/8 furnaces · 2 no space · 2 incompatible",
+                "No items distributed · 0/8 furnaces · 8 skipped (no space)", "No items distributed · 0/8 furnaces · 8 skipped (incompatible item)",
+                "Distributed 2 items across 2/8 furnaces",
+                "Distributed 4 items across 1/8 furnaces · 5 no space · 2 incompatible · 60 left in hand",
+                "No items distributed · 0/8 furnaces"};
+        try (var files = Files.list(root.resolve("common/src/main/resources/assets/furnacedistributor/lang"))) {
+            for (Path path : files.filter(file -> file.toString().endsWith(".json")).toList()) {
+                var language = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
+                for (int i = 0; i < cases.length; i++) {
+                    int[] c = cases[i];
+                    Component result = (Component) method.invoke(null, c[0], c[1], c[2], c[3], c[4], c[5]);
+                    String text = translated(result, language);
+                    check(!text.contains("%s"), "all distribution placeholders resolved in " + path.getFileName());
+                    check(text.contains(c[1] + "/" + c[2]), "actual receiver/considered fraction, including zero moved");
+                    if (path.getFileName().toString().equals("en_us.json")) check(text.equals(expected[i]), "exact English result " + i);
+                    if (c[4] + c[5] == 0 && c[3] == 0) check(result.getSiblings().isEmpty(), "no zero exclusion categories");
+                }
+            }
+        }
+    }
+
+    private static String translated(Component component, JsonObject language) {
+        String text;
+        if (component.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents contents) {
+            Object[] args = Arrays.stream(contents.getArgs())
+                    .map(arg -> arg instanceof Component child ? translated(child, language) : arg).toArray();
+            text = String.format(language.get(contents.getKey()).getAsString(), args);
+        } else {
+            var copy = component.copy();
+            copy.getSiblings().clear();
+            text = copy.getString();
+        }
+        for (Component child : component.getSiblings()) text += translated(child, language);
+        return text;
+    }
+
+    private static void contextualTips() throws Exception {
+        Path directory = Files.createTempDirectory("furnacedistributor-onboarding-");
+        Path path = directory.resolve("client.json");
+        var configFile = ClientConfig.class.getDeclaredField("file");
+        configFile.setAccessible(true);
+        Object previousFile = configFile.get(null);
+        configFile.set(null, new ConfigFile<>(path, ClientConfig.class, ClientConfig::validate));
+        try {
+            var start = SelectionFeedback.class.getDeclaredMethod("startTip", boolean.class);
+            var tick = SelectionFeedback.class.getDeclaredMethod("tickTip", boolean.class);
+            start.setAccessible(true);
+            tick.setAccessible(true);
+            ClientConfig config = ClientConfig.get();
+            SelectionFeedback.clear();
+            start.invoke(null, false);
+            check(!SelectionFeedback.hasTip() && config.collectionTipSelections == 0, "hidden HUD/unbound shortcut does not consume tip");
+            config.showContextualTips = false;
+            start.invoke(null, true);
+            check(!SelectionFeedback.hasTip() && config.collectionTipSelections == 0, "disabled tips preserve progress");
+            config.showContextualTips = true;
+            for (int selection = 1; selection <= 3; selection++) {
+                start.invoke(null, true);
+                check(SelectionFeedback.hasTip() && config.collectionTipSelections == selection, "first three valid selections teach collection");
+                ClientConfig persisted = new ConfigFile<>(path, ClientConfig.class, ClientConfig::validate).load(ClientConfig::new);
+                check(persisted.collectionTipSelections == selection && !persisted.collectionTipLearned,
+                        "showing a tip automatically persists its count before shutdown");
+                for (int i = 0; i < 99; i++) tick.invoke(null, true);
+                check(SelectionFeedback.hasTip(), "tip lasts just under five seconds without timer reset");
+                tick.invoke(null, true);
+                check(!SelectionFeedback.hasTip() && config.collectionTipSelections == selection, "tip expires at five seconds");
+                SelectionFeedback.clear();
+                check(config.collectionTipSelections == selection, "cancellation does not reset or advance onboarding");
+            }
+            start.invoke(null, true);
+            check(!SelectionFeedback.hasTip(), "fourth completed selection shows no tip");
+            config.collectionTipSelections = 0;
+            start.invoke(null, true);
+            tick.invoke(null, false);
+            check(!SelectionFeedback.hasTip() && config.collectionTipSelections == 1, "invalidated area hides tip");
+            start.invoke(null, true);
+            SelectionFeedback.hideTip();
+            check(!config.collectionTipLearned, "collection press/new collection selection only dismisses tip");
+            check(CollectionShortcut.resolve(false, true, true, true) == CollectionShortcut.Action.SELECT_FIRST,
+                    "Sneak+collect on furnace never marks saved-area collection");
+            start.invoke(null, true);
+            SelectionFeedback.collectedSavedArea();
+            check(!SelectionFeedback.hasTip() && config.collectionTipLearned, "saved-area command teaches shortcut without ready items");
+            ClientConfig persisted = new ConfigFile<>(path, ClientConfig.class, ClientConfig::validate).load(ClientConfig::new);
+            check(persisted.collectionTipSelections == 3 && persisted.collectionTipLearned,
+                    "using saved-area collection automatically persists learning");
+            config.collectionTipSelections = 0;
+            start.invoke(null, true);
+            check(!SelectionFeedback.hasTip(), "learned shortcut suppresses all future tips");
+            var key = new KeyMapping("regression.tip", InputConstants.Type.KEYSYM, 67, KeyMapping.Category.MISC);
+            for (var binding : new InputConstants.Key[]{InputConstants.getKey("key.keyboard.c"), InputConstants.getKey("key.keyboard.g"),
+                    InputConstants.getKey("key.mouse.left"), InputConstants.Type.SCANCODE.getOrCreate(30)}) {
+                key.setKey(binding);
+                Component tip = SelectionFeedback.tipDescription(key);
+                var contents = (net.minecraft.network.chat.contents.TranslatableContents) tip.getContents();
+                Component keycap = (Component) contents.getArgs()[0];
+                check(keycap.getString().equals("[" + key.getTranslatedKeyMessage().getString() + "]")
+                        && keycap.getStyle().isBold(), "tip tracks current keyboard/mouse binding " + binding);
+            }
+            key.setKey(InputConstants.UNKNOWN);
+            check(SelectionFeedback.tipDescription(key) == null, "unassigned key offers no incorrect instruction");
+            config.collectionTipSelections = 0;
+            config.collectionTipLearned = false;
+            SelectionFeedback.clear();
+        } finally {
+            configFile.set(null, previousFile);
+            Files.deleteIfExists(path);
+            Files.delete(directory);
+        }
+    }
+
+    private static void previewCulling() throws ReflectiveOperationException {
+        var visible = com.thonyy.furnacedistributor.client.RenderHandler.class.getDeclaredMethod("visiblePreview",
+                java.util.List.class, net.minecraft.client.renderer.culling.Frustum.class, int.class, double.class);
+        visible.setAccessible(true);
+        var positions = java.util.stream.IntStream.range(0, 64).mapToObj(x -> new BlockPos(x, 0, 0)).toList();
+        int[] visited = {0};
+        var frustum = new net.minecraft.client.renderer.culling.Frustum(new org.joml.Matrix4f(), new org.joml.Matrix4f()) {
+            @Override public boolean isVisible(net.minecraft.world.phys.AABB box) {
+                visited[0]++;
+                check(box.minY <= 0.71 && box.maxY >= 1.89, "culling includes floating preview and bobbing range");
+                return box.minX >= 32;
+            }
+        };
+        @SuppressWarnings("unchecked") var limited = (java.util.List<BlockPos>) visible.invoke(null, positions, frustum, 8, 0.5);
+        check(limited.size() == 8 && limited.getFirst().getX() == 32 && visited[0] == 40,
+                "offscreen positions do not consume budget; stop searching once budget is filled");
+        check(positions.size() == 64, "render budget does not truncate selected furnace count");
+        @SuppressWarnings("unchecked") var full = (java.util.List<BlockPos>) visible.invoke(null, positions, frustum, 64, 0.5);
+        check(full.size() == 32 && full.getLast().getX() == 63, "full budget preserves all visible positions");
+        check(((java.util.List<?>) visible.invoke(null, positions.subList(0, 16), frustum, 64, 0.5)).isEmpty(),
+                "entirely offscreen selection submits no item previews");
+        var actualFrustum = new net.minecraft.client.renderer.culling.Frustum(new org.joml.Matrix4f(), new org.joml.Matrix4f());
+        actualFrustum.prepare(0, 0, 0);
+        check(((java.util.List<?>) visible.invoke(null, java.util.List.of(BlockPos.ZERO), actualFrustum, 64, 0.5)).size() == 1,
+                "real vanilla frustum retains an item overlapping the edge of view");
+        var radius = com.thonyy.furnacedistributor.client.RenderHandler.class.getDeclaredMethod("previewRadius", net.minecraft.world.phys.AABB.class);
+        radius.setAccessible(true);
+        var oversized = new net.minecraft.world.phys.AABB(-4, -2, -1, 2, 3, 5);
+        double size = (double) radius.invoke(null, oversized);
+        for (int angle = 0; angle < 360; angle += 15) {
+            var rotation = new org.joml.Quaternionf().rotationXYZ(angle * 0.01f, angle * 0.03f, angle * 0.02f);
+            for (double x : new double[]{oversized.minX, oversized.maxX}) {
+                for (double y : new double[]{oversized.minY, oversized.maxY}) {
+                    for (double z : new double[]{oversized.minZ, oversized.maxZ}) {
+                        var corner = new org.joml.Vector3f((float) x, (float) y, (float) z).mul(0.5f).rotate(rotation);
+                        check(corner.length() <= size + 0.00001, "culling bound includes oversized model in every rotation");
+                    }
+                }
+            }
         }
     }
 

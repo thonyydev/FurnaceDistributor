@@ -7,7 +7,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 public final class FabricRenderEvents {
 
     public static void register() {
-        LevelExtractionEvents.END_EXTRACTION.register(context -> RenderHandler.extract(context.camera(), context.levelState()));
+        LevelExtractionEvents.END_EXTRACTION.register(context -> RenderHandler.extract(
+                context.camera(), context.levelState(), context.camera().getCullFrustum()));
         LevelRenderEvents.COLLECT_SUBMITS.register(context -> RenderHandler.submit(context.levelState(), context.submitNodeCollector()));
     }
 

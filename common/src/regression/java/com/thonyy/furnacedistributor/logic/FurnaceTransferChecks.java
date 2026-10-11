@@ -150,7 +150,7 @@ final class FurnaceTransferChecks {
         return checks;
     }
 
-    private static final class Fixture implements FurnaceAccess {
+    static final class Fixture implements FurnaceAccess {
         final SimpleContainer inventory = new SimpleContainer(6);
         final FurnaceTarget target = new FurnaceTarget(new FurnaceBlockEntity(BlockPos.ZERO, Blocks.FURNACE.defaultBlockState()), this);
         @Override public boolean supports(BlockEntity entity) { return true; }
