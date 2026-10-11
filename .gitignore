@@ -37,3 +37,7 @@ gradle.properties.local
 
 #Tools 
 tools/
+
+#Docs
+
+docs/
